@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Star Wars Galaxy Map</title>
+
+<style>
+body {
+ margin:0;
+ background:black;
+}
+
+#map {
+ width:100vw;
+ height:100vh;
+}
+
+.planet {
+ fill:#00ffff;
+}
+
+.planet:hover {
+ fill:#ffff00;
+ cursor:pointer;
+}
+</style>
+
+</head>
+<body>
+
+<svg id="map" viewBox="0 0 2000 2000"></svg>
+
+<script>
+
+const svg = document.getElementById("map")
+
+const planets = [
+
+{name:"Coruscant", x:1000, y:1000},
+{name:"Tatooine", x:1600, y:1200},
+{name:"Naboo", x:1150, y:1050},
+{name:"Kamino", x:1400, y:900},
+{name:"Scarif", x:1700, y:1100}
+
+]
+
+planets.forEach(p => {
+
+ const circle = document.createElementNS(
+  "http://www.w3.org/2000/svg",
+  "circle"
+ )
+
+ circle.setAttribute("cx", p.x)
+ circle.setAttribute("cy", p.y)
+ circle.setAttribute("r", 6)
+ circle.setAttribute("class", "planet")
+
+ circle.onclick = () =>
+  window.open(
+   "https://www.jedipedia.net/wiki/" + p.name
+  )
+
+ svg.appendChild(circle)
+
+})
+
+</script>
+
+</body>
+</html>
