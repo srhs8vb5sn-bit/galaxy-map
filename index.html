@@ -1,42 +1,126 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Star Wars Galaxy Map</title>
 
 <style>
+
 body {
  margin:0;
  background:black;
+ color:white;
+ font-family:Arial;
+ overflow:hidden;
 }
 
-#map {
+#ui {
+ position:absolute;
+ top:10px;
+ left:10px;
+ z-index:10;
+}
+
+#search {
+ padding:8px;
+ font-size:16px;
+ width:250px;
+}
+
+#tooltip {
+ position:absolute;
+ background:#111;
+ border:1px solid #555;
+ padding:8px;
+ display:none;
+ pointer-events:none;
+}
+
+svg {
  width:100vw;
  height:100vh;
 }
 
-.planet {
- fill:#00ffff;
-}
+.Core { fill:#00ffff; }
+.Mid { fill:#00ff00; }
+.Outer { fill:#ffaa00; }
+.Unknown { fill:#ff00ff; }
 
-.planet:hover {
- fill:#ffff00;
+circle:hover {
+ fill:white;
  cursor:pointer;
 }
-</style>
 
+</style>
 </head>
 <body>
 
-<svg id="map" viewBox="0 0 2000 2000"></svg>
+<div id="ui">
+<input id="search" placeholder="Search planet...">
+</div>
+
+<div id="tooltip"></div>
+
+<svg id="map">
+<g id="viewport"></g>
+</svg>
 
 <script>
 
 const svg = document.getElementById("map")
+const viewport = document.getElementById("viewport")
+const tooltip = document.getElementById("tooltip")
+const search = document.getElementById("search")
 
+let scale = 1
+let offsetX = 0
+let offsetY = 0
+let planetsData = []
+
+// Zoom
+svg.onwheel = e => {
+ e.preventDefault()
+ scale *= e.deltaY < 0 ? 1.1 : 0.9
+ updateTransform()
+}
+
+// Drag
+let dragging = false
+let lastX, lastY
+
+svg.onmousedown = e => {
+ dragging = true
+ lastX = e.clientX
+ lastY = e.clientY
+}
+
+svg.onmouseup = () => dragging = false
+
+svg.onmousemove = e => {
+
+ if(dragging){
+  offsetX += e.clientX - lastX
+  offsetY += e.clientY - lastY
+  lastX = e.clientX
+  lastY = e.clientY
+  updateTransform()
+ }
+
+}
+
+function updateTransform(){
+ viewport.setAttribute(
+  "transform",
+  `translate(${offsetX},${offsetY}) scale(${scale})`
+ )
+}
+
+// Load planets
 fetch("planets.json")
-.then(response => response.json())
+.then(r => r.json())
 .then(planets => {
+
+ planetsData = planets
 
  planets.forEach(p => {
 
@@ -48,18 +132,70 @@ fetch("planets.json")
   circle.setAttribute("cx", p.x)
   circle.setAttribute("cy", p.y)
   circle.setAttribute("r", 6)
-  circle.setAttribute("class", "planet")
 
+  let regionClass = "Outer"
+
+  if(p.region.includes("Core")) regionClass="Core"
+  if(p.region.includes("Mid")) regionClass="Mid"
+  if(p.region.includes("Unknown")) regionClass="Unknown"
+
+  circle.setAttribute("class", regionClass)
+
+  // Tooltip
+  circle.onmouseenter = e => {
+
+   tooltip.style.display="block"
+
+   tooltip.innerHTML = `
+   <b>${p.name}</b><br>
+   Region: ${p.region}
+   `
+  }
+
+  circle.onmousemove = e => {
+
+   tooltip.style.left = e.clientX+10+"px"
+   tooltip.style.top = e.clientY+10+"px"
+
+  }
+
+  circle.onmouseleave = () =>
+   tooltip.style.display="none"
+
+  // Click → Jedipedia
   circle.onclick = () =>
    window.open(
     "https://www.jedipedia.net/wiki/" + p.name
    )
 
-  svg.appendChild(circle)
+  viewport.appendChild(circle)
 
  })
 
 })
+
+// Search
+search.oninput = () => {
+
+ const value = search.value.toLowerCase()
+
+ document.querySelectorAll("circle")
+ .forEach(circle => {
+
+  const name =
+   planetsData[
+    [...circle.parentNode.children]
+    .indexOf(circle)
+   ].name.toLowerCase()
+
+  circle.style.display =
+   name.includes(value)
+   ? "block"
+   : "none"
+
+ })
+
+}
 
 </script>
 
