@@ -1,0 +1,12 @@
+[
+ {"name":"Coruscant","x":1000,"y":1000,"region":"Core"},
+ {"name":"Alderaan","x":1020,"y":980,"region":"Core"},
+ {"name":"Naboo","x":1150,"y":1050,"region":"Mid Rim"},
+ {"name":"Kamino","x":1400,"y":900,"region":"Outer Rim"},
+ {"name":"Tatooine","x":1600,"y":1200,"region":"Outer Rim"},
+ {"name":"Scarif","x":1700,"y":1100,"region":"Outer Rim"},
+ {"name":"Mustafar","x":1500,"y":1000,"region":"Outer Rim"},
+ {"name":"Jedha","x":1550,"y":980,"region":"Outer Rim"},
+ {"name":"Exegol","x":400,"y":400,"region":"Unknown Regions"},
+ {"name":"Ilum","x":900,"y":300,"region":"Unknown Regions"}
+]
