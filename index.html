@@ -139,7 +139,7 @@ fetch("planets.json")
   if(p.region.includes("Mid")) regionClass="Mid"
   if(p.region.includes("Unknown")) regionClass="Unknown"
 
-  circle.setAttribute("class", regionClass)
+  circle.setAttribute("class", regionClass) circle.dataset.name = p.name.toLowerCase()
 
   // Tooltip
   circle.onmouseenter = e => {
