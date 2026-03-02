@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -25,6 +25,9 @@ body {
  padding:8px;
  font-size:16px;
  width:250px;
+ background:#111;
+ color:white;
+ border:1px solid #555;
 }
 
 #tooltip {
@@ -34,6 +37,7 @@ body {
  padding:8px;
  display:none;
  pointer-events:none;
+ font-size:14px;
 }
 
 svg {
@@ -46,8 +50,13 @@ svg {
 .Outer { fill:#ffaa00; }
 .Unknown { fill:#ff00ff; }
 
+circle {
+ transition: all 0.15s ease;
+}
+
 circle:hover {
  fill:white;
+ r:9;
  cursor:pointer;
 }
 
@@ -77,14 +86,29 @@ let offsetX = 0
 let offsetY = 0
 let planetsData = []
 
-// Zoom
+// --------------------
+// ZOOM (verbessert)
+// --------------------
+
 svg.onwheel = e => {
+
  e.preventDefault()
- scale *= e.deltaY < 0 ? 1.03 : 0.97
+
+ const zoomSpeed = 0.0015
+ const zoom = 1 - e.deltaY * zoomSpeed
+
+ scale *= zoom
+
+ scale = Math.min(Math.max(0.2, scale), 8)
+
  updateTransform()
+
 }
 
-// Drag
+// --------------------
+// DRAG
+// --------------------
+
 let dragging = false
 let lastX, lastY
 
@@ -95,27 +119,41 @@ svg.onmousedown = e => {
 }
 
 svg.onmouseup = () => dragging = false
+svg.onmouseleave = () => dragging = false
 
 svg.onmousemove = e => {
 
  if(dragging){
+
   offsetX += e.clientX - lastX
   offsetY += e.clientY - lastY
+
   lastX = e.clientX
   lastY = e.clientY
+
   updateTransform()
+
  }
 
 }
 
+// --------------------
+// TRANSFORM UPDATE
+// --------------------
+
 function updateTransform(){
+
  viewport.setAttribute(
   "transform",
   `translate(${offsetX},${offsetY}) scale(${scale})`
  )
+
 }
 
-// Load planets
+// --------------------
+// PLANETS LADEN
+// --------------------
+
 fetch("planets.json")
 .then(r => r.json())
 .then(planets => {
@@ -133,48 +171,68 @@ fetch("planets.json")
   circle.setAttribute("cy", p.y)
   circle.setAttribute("r", 6)
 
+  // Region Class
   let regionClass = "Outer"
 
   if(p.region.includes("Core")) regionClass="Core"
   if(p.region.includes("Mid")) regionClass="Mid"
   if(p.region.includes("Unknown")) regionClass="Unknown"
 
-  circle.setAttribute("class", regionClass) circle.dataset.name = p.name.toLowerCase()
+  circle.setAttribute("class", regionClass)
 
-  // Tooltip
+  // WICHTIG: Name speichern für Suche
+  circle.dataset.name = p.name.toLowerCase()
+
+  // TOOLTIP
   circle.onmouseenter = e => {
 
    tooltip.style.display="block"
 
    tooltip.innerHTML = `
-   <b>${p.name}</b><br>
-   Region: ${p.region}
+   <b style="color:white">${p.name}</b><br>
+   <span style="color:gray">${p.region}</span><br>
+   <span style="color:#888;font-size:12px">
+   Click for full info
+   </span>
    `
   }
 
   circle.onmousemove = e => {
 
-   tooltip.style.left = e.clientX+10+"px"
-   tooltip.style.top = e.clientY+10+"px"
+   tooltip.style.left = e.clientX + 10 + "px"
+   tooltip.style.top = e.clientY + 10 + "px"
 
   }
 
-  circle.onmouseleave = () =>
+  circle.onmouseleave = () => {
    tooltip.style.display="none"
+  }
 
-  // Click → Jedipedia
-  circle.onclick = () =>
+  // CLICK → Jedipedia
+  circle.onclick = () => {
+
    window.open(
     "https://www.jedipedia.net/wiki/" + p.name
    )
+
+  }
 
   viewport.appendChild(circle)
 
  })
 
+ // Kamera initial zentrieren (Coruscant Bereich)
+ offsetX = window.innerWidth/2 - 1000
+ offsetY = window.innerHeight/2 - 1000
+
+ updateTransform()
+
 })
 
-// Search
+// --------------------
+// SUCHE (FIXED)
+// --------------------
+
 search.oninput = () => {
 
  const value = search.value.toLowerCase()
@@ -182,15 +240,9 @@ search.oninput = () => {
  document.querySelectorAll("circle")
  .forEach(circle => {
 
-  const name =
-   planetsData[
-    [...circle.parentNode.children]
-    .indexOf(circle)
-   ].name.toLowerCase()
-
   circle.style.display =
-   name.includes(value)
-   ? "block"
+   circle.dataset.name.includes(value)
+   ? ""
    : "none"
 
  })
