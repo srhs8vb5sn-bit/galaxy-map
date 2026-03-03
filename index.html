@@ -3,80 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <title>Galaxy Map</title>
-
 <style>
 body { margin:0; background:black; overflow:hidden; font-family:Arial; color:white; }
-
-#ui {
- position:absolute;
- top:10px;
- left:10px;
- z-index:10;
-}
-
-#ui button {
- margin-top:6px;
- padding:6px 10px;
- background:#111;
- border:1px solid #444;
- color:white;
- cursor:pointer;
-}
-
+#ui{ position:absolute; top:10px; left:10px; z-index:10;}
+#ui button{ margin-top:6px; padding:6px 10px; background:#111; border:1px solid #444; color:white; cursor:pointer;}
 #search { padding:8px; width:220px; }
-
-#tooltip {
- position:absolute;
- background:#111;
- border:1px solid #444;
- padding:12px;
- display:none;
- width:300px;
- pointer-events:none;
- font-size:14px;
-}
-
-#tooltip img {
- width:100%;
- height:150px;
- object-fit:cover;
- margin:8px 0;
- border-radius:4px;
-}
-
-#tooltip a { display:none; }
-
-.route {
- stroke:#0ff;
- stroke-width:2;
- fill:none;
- stroke-dasharray:8;
- animation:pulse 2s linear infinite;
- opacity:0.6;
-}
-
-.zone {
- fill-opacity:0.08;
- stroke-width:3;
-}
-
-#minimapContainer {
- position:absolute;
- bottom:20px;
- right:20px;
- width:220px;
- height:220px;
- border:1px solid #444;
- background:black;
-}
-
-#minimap { width:100%; height:100%; }
-#miniView { fill:none; stroke:white; stroke-width:2; }
-
-.star {
- fill:white;
- opacity:0.6;
-}
+#tooltip{ position:absolute; background:#111; border:1px solid #444; padding:12px; display:none; width:300px; pointer-events:none; font-size:14px;}
+#tooltip img{ width:100%; height:150px; object-fit:cover; margin:8px 0; border-radius:4px;}
+#minimapContainer{ position:absolute; bottom:20px; right:20px; width:220px; height:220px; border:1px solid #444; background:black;}
+#minimap{ width:100%; height:100%; }
+#miniView{ fill:none; stroke:white; stroke-width:2; }
+.star{ fill:white; opacity:0.6; }
+.zone{ fill-opacity:0.08; stroke-width:3; }
+.route{ stroke:#0ff; stroke-width:2; fill:none; stroke-dasharray:8; animation:pulse 2s linear infinite; opacity:0.6; }
+@keyframes pulse{ 0%{ stroke-dashoffset:0 } 100%{ stroke-dashoffset:16 } }
 </style>
 </head>
 <body>
@@ -108,35 +48,28 @@ let factionMode=false
 let routesVisible=true
 let zonesVisible=true
 let miniRect
-let starLayers=[]
 
-// RANDOM STARS FOR BACKGROUND
-for(let l=0;l<3;l++){
- for(let i=0;i<200;i++){
-  const s=document.createElementNS("http://www.w3.org/2000/svg","circle")
-  s.setAttribute("cx",Math.random()*2000)
-  s.setAttribute("cy",Math.random()*2000)
-  s.setAttribute("r",Math.random()*1.5)
-  s.setAttribute("class","star")
-  s.style.opacity=0.2+0.3*l
-  map.appendChild(s)
-  starLayers.push({el:s,layer:l})
- }
+// RANDOM STARS
+for(let i=0;i<600;i++){
+ const s=document.createElementNS("http://www.w3.org/2000/svg","circle")
+ s.setAttribute("cx",Math.random()*2000)
+ s.setAttribute("cy",Math.random()*2000)
+ s.setAttribute("r",Math.random()*1.5)
+ s.setAttribute("class","star")
+ map.appendChild(s)
 }
 
-// LOAD PLANETS
-fetch("planets.json")
-.then(res=>res.json())
-.then(data=>{
+// PLANETS + ROUTES + ZONES
+fetch("planets.json").then(r=>r.json()).then(data=>{
  planets=data
  drawZones(map)
  drawZones(minimap,true)
- drawPlanets()
  drawRoutes()
+ drawPlanets()
  drawMiniViewport()
 })
 
-// ZONES
+// ZONES DATA
 const zoneData=[
  {name:"Core",r:200,color:"#00ffff"},
  {name:"Inner Rim",r:400,color:"#00ff00"},
@@ -146,7 +79,6 @@ const zoneData=[
 ]
 
 function drawZones(target,mini=false){
- if(!zonesVisible) return
  zoneData.forEach(z=>{
   const c=document.createElementNS("http://www.w3.org/2000/svg","circle")
   c.setAttribute("cx",1000)
@@ -155,11 +87,12 @@ function drawZones(target,mini=false){
   c.setAttribute("class","zone")
   c.setAttribute("stroke",z.color)
   c.setAttribute("fill",z.color)
+  if(!zonesVisible) c.style.display="none"
   target.appendChild(c)
  })
 }
 
-// FACTION COLOR
+// FACTION COLORS
 function getFactionColor(f){
  if(!factionMode) return "#0ff"
  switch(f){
@@ -172,19 +105,18 @@ function getFactionColor(f){
  }
 }
 
-// PLANETS
+// DRAW PLANETS
 function drawPlanets(){
- planets.forEach(p=>{
+ planets.forEach((p,i)=>{
   const c=document.createElementNS("http://www.w3.org/2000/svg","circle")
   c.setAttribute("cx",p.x)
   c.setAttribute("cy",p.y)
   c.setAttribute("r",4)
+  c.setAttribute("class","planet")
+  c.dataset.index=i
   c.setAttribute("fill",getFactionColor(p.faction))
   c.addEventListener("mouseenter",()=>showTooltip(p))
-  c.addEventListener("mousemove",e=>{
-   tooltip.style.left=e.clientX+15+"px"
-   tooltip.style.top=e.clientY+15+"px"
-  })
+  c.addEventListener("mousemove",e=>{tooltip.style.left=e.clientX+15+"px"; tooltip.style.top=e.clientY+15+"px"})
   c.addEventListener("mouseleave",()=>tooltip.style.display="none")
   c.addEventListener("click",()=>window.open(p.jedipedia,"_blank"))
   map.appendChild(c)
@@ -198,6 +130,7 @@ function drawPlanets(){
  })
 }
 
+// TOOLTIP
 function showTooltip(p){
  tooltip.style.display="block"
  tooltip.innerHTML=`
@@ -226,7 +159,7 @@ function drawRoutes(){
  }
 }
 
-// MINIMAP VIEWPORT
+// MINIMAP
 function drawMiniViewport(){
  miniRect=document.createElementNS("http://www.w3.org/2000/svg","rect")
  miniRect.setAttribute("id","miniView")
@@ -296,10 +229,23 @@ function updateViewBox(){
 }
 
 // TOGGLE FUNCTIONS
-function toggleFaction(){ factionMode=!factionMode; map.innerHTML=""; drawZones(map); drawPlanets(); drawRoutes(); }
-function toggleRoutes(){ routesVisible=!routesVisible; document.querySelectorAll(".route").forEach(r=>r.style.display=routesVisible?"block":"none") }
-function toggleZones(){ zonesVisible=!zonesVisible; map.innerHTML=""; drawZones(map); drawPlanets(); drawRoutes() }
+function toggleFaction(){
+ factionMode=!factionMode
+ document.querySelectorAll(".planet").forEach(c=>{
+  const p=planets[c.dataset.index]
+  c.setAttribute("fill",getFactionColor(p.faction))
+ })
+}
 
+function toggleRoutes(){
+ routesVisible=!routesVisible
+ document.querySelectorAll(".route").forEach(r=>r.style.display=routesVisible?"block":"none")
+}
+
+function toggleZones(){
+ zonesVisible=!zonesVisible
+ document.querySelectorAll(".zone").forEach(z=>z.style.display=zonesVisible?"block":"none")
+}
 </script>
 </body>
 </html>
