@@ -44,7 +44,7 @@ body { margin:0; background:black; overflow:hidden; font-family:Arial; color:whi
  border-radius:4px;
 }
 
-#tooltip a { color:#00aaff; text-decoration:none; font-weight:bold; }
+#tooltip a { display:none; }
 
 .route {
  stroke:#0ff;
@@ -85,7 +85,7 @@ body { margin:0; background:black; overflow:hidden; font-family:Arial; color:whi
 <input id="search" placeholder="Planet suchen"><br>
 <button onclick="toggleFaction()">Fraktionsfarben</button><br>
 <button onclick="toggleRoutes()">Hyperraumrouten</button><br>
-<button onclick="toggleZones()">Zonen anzeigen</button>
+<button onclick="toggleZones()">Zonen ein/ausblenden</button>
 </div>
 
 <div id="tooltip"></div>
@@ -181,7 +181,10 @@ function drawPlanets(){
   c.setAttribute("r",4)
   c.setAttribute("fill",getFactionColor(p.faction))
   c.addEventListener("mouseenter",()=>showTooltip(p))
-  c.addEventListener("mousemove",e=>tooltip.style.left=e.clientX+15+"px"||tooltip.style.top=e.clientY+15+"px")
+  c.addEventListener("mousemove",e=>{
+   tooltip.style.left=e.clientX+15+"px"
+   tooltip.style.top=e.clientY+15+"px"
+  })
   c.addEventListener("mouseleave",()=>tooltip.style.display="none")
   c.addEventListener("click",()=>window.open(p.jedipedia,"_blank"))
   map.appendChild(c)
@@ -201,8 +204,8 @@ function showTooltip(p){
   <b>${p.name}</b><br>
   Zone: ${p.sector}<br>
   Fraktion: ${p.faction}<br>
-  <img src="${p.image}"><br>
-  <a href="${p.jedipedia}" target="_blank">→ Jedipedia</a>
+  <img src="${p.image}">
+  <br>(Klick → Jedipedia)
  `
 }
 
