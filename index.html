@@ -23,23 +23,6 @@ body { margin:0; background:black; color:white; font-family:Arial; overflow:hidd
  margin-top:8px;
  border:1px solid #333;
 }
-#minimapContainer {
- position:absolute;
- bottom:10px;
- right:10px;
- width:200px;
- height:200px;
- border:1px solid #555;
- background:#000;
- z-index:20;
-}
-#minimap { width:100%; height:100%; }
-.sector-label {
- fill:#555;
- font-size:60px;
- opacity:0.15;
- pointer-events:none;
-}
 </style>
 </head>
 <body>
@@ -49,112 +32,66 @@ body { margin:0; background:black; color:white; font-family:Arial; overflow:hidd
 </div>
 
 <div id="tooltip"></div>
-
-<div id="minimapContainer">
-<svg id="minimap" viewBox="0 0 2000 2000"></svg>
-</div>
-
 <svg id="map" width="100vw" height="100vh" viewBox="0 0 2000 2000"></svg>
 
 <script>
 const map=document.getElementById("map")
-const minimap=document.getElementById("minimap")
 const tooltip=document.getElementById("tooltip")
 const search=document.getElementById("search")
 
 let planets=[]
-let viewBox={x:600,y:600,w:800,h:800}
+let viewBox={x:700,y:700,w:600,h:600}
 
-// ===== SEKTOR-DEFINITION =====
-const sectors=[
- {name:"Core Worlds", x:800, y:800, radius:200},
- {name:"Inner Rim", x:800, y:800, radius:400},
- {name:"Mid Rim", x:800, y:800, radius:650},
- {name:"Outer Rim", x:800, y:800, radius:900},
- {name:"Unknown Regions", x:800, y:800, radius:1200}
-]
+fetch("planets.json")
+.then(r=>r.json())
+.then(data=>{
+ planets=data
+ drawPlanets()
+})
 
-// ===== MAJOR PLANETS =====
-const majorPlanets=[
- {name:"Coruscant", x:1000, y:1000, sector:"Core Worlds", desc:"Galaktisches Zentrum."},
- {name:"Tatooine", x:1500, y:1200, sector:"Outer Rim", desc:"Wüstenplanet."},
- {name:"Naboo", x:1150, y:1050, sector:"Mid Rim", desc:"Heimat von Padmé."},
- {name:"Kashyyyk", x:1200, y:1100, sector:"Mid Rim", desc:"Wookiee-Welt."},
- {name:"Hoth", x:1500, y:850, sector:"Outer Rim", desc:"Eisplanet."}
-]
+function drawPlanets(){
+ planets.forEach(p=>{
+  const c=document.createElementNS("http://www.w3.org/2000/svg","circle")
+  c.setAttribute("cx",p.x)
+  c.setAttribute("cy",p.y)
+  c.setAttribute("r",6)
+  c.setAttribute("fill","#0ff")
 
-// ===== RANDOM GENERATOR BIS 1000 =====
-function generatePlanets(){
- planets=[...majorPlanets]
+  c.onmouseenter=e=>{
+   tooltip.style.display="block"
+   tooltip.innerHTML=`
+    <b>${p.name}</b><br>
+    ${p.sector}<br><br>
+    ${p.description}
+    <img src="https://source.unsplash.com/300x200/?planet,space">
+   `
+  }
 
- const sectorZones=[
-  {name:"Core Worlds", min:0, max:200},
-  {name:"Inner Rim", min:200, max:400},
-  {name:"Mid Rim", min:400, max:650},
-  {name:"Outer Rim", min:650, max:900},
-  {name:"Unknown Regions", min:900, max:1200}
- ]
+  c.onmousemove=e=>{
+   tooltip.style.left=e.clientX+15+"px"
+   tooltip.style.top=e.clientY+15+"px"
+  }
 
- while(planets.length<1000){
-  const zone=sectorZones[Math.floor(Math.random()*sectorZones.length)]
-  const angle=Math.random()*Math.PI*2
-  const dist=Math.random()*(zone.max-zone.min)+zone.min
-  const x=1000+Math.cos(angle)*dist
-  const y=1000+Math.sin(angle)*dist
+  c.onmouseleave=()=>tooltip.style.display="none"
 
-  planets.push({
-   name:"System-"+planets.length,
-   x,y,
-   sector:zone.name,
-   desc:"Registriertes Sternsystem im "+zone.name+"."
-  })
+  map.appendChild(c)
+ })
+}
+
+// Auto Zoom bei Suche
+search.oninput=e=>{
+ const val=search.value.toLowerCase()
+ const found=planets.find(p=>p.name.toLowerCase()===val)
+ if(found){
+  viewBox.w=400
+  viewBox.h=400
+  viewBox.x=found.x-200
+  viewBox.y=found.y-200
+  map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
  }
 }
 
-generatePlanets()
-
-// ===== SEKTOR LABELS =====
-sectors.forEach(s=>{
- const text=document.createElementNS("http://www.w3.org/2000/svg","text")
- text.setAttribute("x",1000+s.radius/2)
- text.setAttribute("y",1000)
- text.setAttribute("class","sector-label")
- text.textContent=s.name
- map.appendChild(text)
-})
-
-// ===== PLANET RENDER =====
-const planetGroup=document.createElementNS("http://www.w3.org/2000/svg","g")
-map.appendChild(planetGroup)
-
-planets.forEach(p=>{
- const c=document.createElementNS("http://www.w3.org/2000/svg","circle")
- c.setAttribute("cx",p.x)
- c.setAttribute("cy",p.y)
- c.setAttribute("r",3)
- c.setAttribute("fill","#0ff")
-
- c.onmouseenter=e=>{
-  tooltip.style.display="block"
-  tooltip.innerHTML=`
-   <b>${p.name}</b><br>
-   ${p.sector}<br><br>
-   ${p.desc}
-   <img src="https://source.unsplash.com/300x200/?planet,space">
-  `
- }
-
- c.onmousemove=e=>{
-  tooltip.style.left=e.clientX+15+"px"
-  tooltip.style.top=e.clientY+15+"px"
- }
-
- c.onmouseleave=()=>tooltip.style.display="none"
-
- planetGroup.appendChild(c)
-})
-
-// ===== PAN =====
+// Drag
 let dragging=false,lastX,lastY
 map.onmousedown=e=>{dragging=true;lastX=e.clientX;lastY=e.clientY}
 map.onmouseup=e=>dragging=false
@@ -170,22 +107,13 @@ map.onmousemove=e=>{
  }
 }
 
-// ===== ZOOM =====
+// Zoom
 map.onwheel=e=>{
  e.preventDefault()
  const zoom=e.deltaY<0?0.9:1.1
  viewBox.w*=zoom
  viewBox.h*=zoom
  map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
-}
-
-// ===== SEARCH =====
-search.oninput=e=>{
- const val=search.value.toLowerCase()
- Array.from(planetGroup.children).forEach((c,i)=>{
-  const show=planets[i].name.toLowerCase().includes(val)
-  c.style.display=show?"block":"none"
- })
 }
 </script>
 </body>
