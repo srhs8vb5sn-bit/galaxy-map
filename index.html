@@ -4,291 +4,157 @@
 <meta charset="UTF-8">
 <title>Star Wars Galaxy Map</title>
 <style>
-body {
-  margin:0;
-  background:black;
-  font-family:Arial;
-  overflow:hidden;
-  user-select:none;
-}
-
-#ui {
-  position:absolute;
-  top:10px;
-  left:10px;
-  z-index:20;
-  background:rgba(0,0,0,0.5);
-  padding:10px;
-  border-radius:5px;
-}
-
-#search { padding:6px; width:200px; }
-button {
-  display:block;
-  margin-top:5px;
-  width:200px;
-  padding:6px;
-  background:#222;
-  color:white;
-  border:1px solid #444;
-  cursor:pointer;
-}
-
-#tooltip {
-  position:absolute;
-  background:#111;
-  border:1px solid #555;
-  padding:8px;
-  display:none;
-  width:250px;
-  pointer-events:none;
-  font-size:14px;
-}
-#tooltip img {
-  width:100%;
-  height:140px;
-  object-fit:cover;
-  margin:6px 0;
-}
-
-#minimapContainer {
-  position:absolute;
-  bottom:10px;
-  right:10px;
-  width:220px;
-  height:220px;
-  border:1px solid #444;
-  background:black;
-  z-index:10;
-}
-
+body { margin:0; overflow:hidden; background:black; color:white; font-family:Arial; }
+#ui { position:absolute; top:10px; left:10px; z-index:10; }
+#search { padding:6px; width:220px; font-size:14px; }
+#tooltip { position:absolute; background:#111; border:1px solid #555; padding:8px; display:none; pointer-events:none; max-width:250px; }
+#minimapContainer { position:absolute; bottom:10px; right:10px; width:200px; height:200px; border:1px solid #555; background:#000; z-index:9; }
 #minimap { width:100%; height:100%; }
-
-circle.planet:hover {
-  stroke:white;
-  stroke-width:1.2px;
-  cursor:pointer;
-}
-
-line.route {
-  stroke:#0ff;
-  stroke-width:2;
-  stroke-dasharray:8;
-  animation:pulse 2s linear infinite;
-  opacity:0.6;
-}
-
-.zone {
-  fill-opacity:0.08;
-  stroke-width:3;
-}
+svg { width:100vw; height:100vh; }
+circle:hover { cursor:pointer; }
 </style>
 </head>
 <body>
 
 <div id="ui">
-  <input id="search" placeholder="Planet suchen">
-  <button onclick="toggleFaction()">Fraktionsfarben</button>
-  <button onclick="toggleRoutes()">Hyperraumrouten</button>
-  <button onclick="toggleZones()">Zonen</button>
-  <button onclick="toggleLegends()">Legends Planeten</button>
+<input id="search" placeholder="Planet suchen"><br>
+<button onclick="toggleFaction()">Fraktionsmodus</button>
+<button onclick="toggleZones()">Zonen anzeigen</button>
+<button onclick="toggleRoutes()">Hyperraumrouten</button>
 </div>
 
 <div id="tooltip"></div>
-
-<div id="minimapContainer">
-  <svg id="minimap" viewBox="0 0 2000 2000"></svg>
-</div>
-
-<svg id="map" width="100vw" height="100vh"></svg>
+<div id="minimapContainer"><svg id="minimap"></svg></div>
+<svg id="map"></svg>
 
 <script>
 const map = document.getElementById("map")
-const minimap = document.getElementById("minimap")
 const tooltip = document.getElementById("tooltip")
 const search = document.getElementById("search")
+const minimap = document.getElementById("minimap")
 
-let viewBox={x:0,y:0,w:2000,h:2000}
-let planetsData=[]
-let showLegends=false
-let factionMode=false
-let routesVisible=true
-let zonesVisible=true
+let planetsData = []
+let factionMode = false, zonesVisible=true, routesVisible=true
+let viewBox = {x:0, y:0, w:2000, h:2000}
 
-// --- Load Planets JSON ---
-fetch("planets.json")
-.then(r=>r.json())
-.then(data=>{
-  planetsData=data
-  drawMap()
-})
-
-// --- Update ViewBox ---
-function updateViewBox(){
-  map.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
-  minimap.setAttribute("viewBox", "0 0 2000 2000")
-}
-
-// --- Zoom ---
-map.addEventListener("wheel", e=>{
-  e.preventDefault()
-  const scale = e.deltaY<0?0.8:1.2   // zoom etwas kräftiger
-  viewBox.w*=scale
-  viewBox.h*=scale
-  updateViewBox()
-})
-
-// --- Pan (gedämpft) ---
+// Zoom + Drag
 let dragging=false, lastX, lastY
-map.onmousedown=e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY }
-map.onmouseup=e=>dragging=false
-map.onmouseleave=e=>dragging=false
-map.onmousemove=e=>{
-  if(!dragging) return
-  let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth)*0.4
-  let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight)*0.4
-  viewBox.x-=dx
-  viewBox.y-=dy
-  updateViewBox()
-  lastX=e.clientX
-  lastY=e.clientY
+map.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
+
+map.onwheel = e => {
+  e.preventDefault()
+  const factor = e.deltaY<0 ? 0.97 : 1.03
+  viewBox.w*=factor
+  viewBox.h*=factor
+  setViewBox()
 }
 
-// --- Draw Entire Map ---
-function drawMap(){
+map.onmousedown = e => { dragging=true; lastX=e.clientX; lastY=e.clientY; }
+map.onmouseup = () => dragging=false
+map.onmouseleave = () => dragging=false
+map.onmousemove = e => {
+  if(dragging){
+    let dx = (lastX-e.clientX)*(viewBox.w/ window.innerWidth)
+    let dy = (lastY-e.clientY)*(viewBox.h/ window.innerHeight)
+    viewBox.x += dx
+    viewBox.y += dy
+    lastX = e.clientX
+    lastY = e.clientY
+    setViewBox()
+  }
+}
+
+function setViewBox(){ map.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`) }
+
+// Toggle Buttons
+function toggleFaction(){ factionMode=!factionMode; renderPlanets(); }
+function toggleZones(){ zonesVisible=!zonesVisible; renderPlanets(); }
+function toggleRoutes(){ routesVisible=!routesVisible; renderRoutes(); }
+
+// Load planets.json
+fetch("planets.json").then(r=>r.json()).then(data=>{
+  planetsData=data
+  renderPlanets()
+  renderRoutes()
+})
+
+// Render Planets
+function renderPlanets(){
   map.innerHTML=""
-  minimap.innerHTML=""
-
-  // Zones
-  if(zonesVisible) drawZones(map)
-
-  // Routes
-  if(routesVisible) drawRoutes()
-
-  // Planets
-  planetsData.forEach((p,i)=>{
-    if(p.source==="Legends" && !showLegends) return
-
-    const c=document.createElementNS("http://www.w3.org/2000/svg","circle")
-    c.setAttribute("cx",p.x)
-    c.setAttribute("cy",p.y)
-    c.setAttribute("r",5)
-    c.classList.add("planet")
-    c.dataset.index=i
-    c.setAttribute("fill", factionMode ? getFactionColor(p.faction) : "#888")
-
-    c.addEventListener("mouseenter", ()=>showTooltip(p))
-    c.addEventListener("mousemove", e=>{
-      tooltip.style.left=e.clientX+15+"px"
-      tooltip.style.top=e.clientY+15+"px"
-    })
-    c.addEventListener("mouseleave", ()=>tooltip.style.display="none")
-    c.addEventListener("click", ()=>window.open(p.jedipedia,"_blank"))
-
-    map.appendChild(c)
-
-    const mc=document.createElementNS("http://www.w3.org/2000/svg","circle")
-    mc.setAttribute("cx",p.x)
-    mc.setAttribute("cy",p.y)
-    mc.setAttribute("r",2)
-    mc.setAttribute("fill","#888")
-    mc.addEventListener("click", ()=>{
-      viewBox.x=p.x-200
-      viewBox.y=p.y-200
-      viewBox.w=400
-      viewBox.h=400
-      updateViewBox()
-    })
-    minimap.appendChild(mc)
-  })
-  updateViewBox()
-}
-
-// --- Tooltip ---
-function showTooltip(p){
-  tooltip.style.display="block"
-  tooltip.innerHTML=`
-    <b>${p.name}</b><br>${p.region}<br>${p.faction}<br>
-    <img src="${p.image}"><br>
-    <i>${p.description}</i><br>(Klick → Jedipedia)
-  `
-}
-
-// --- Zones ---
-function drawZones(target){
-  const zoneDefs=[
-    {r:200,color:"#00ffff"},
-    {r:400,color:"#00ff00"},
-    {r:650,color:"#ffaa00"},
-    {r:900,color:"#ff5500"},
-    {r:1200,color:"#aa00ff"}
-  ]
-  zoneDefs.forEach(z=>{
-    const circle=document.createElementNS("http://www.w3.org/2000/svg","circle")
-    circle.setAttribute("cx",1000)
-    circle.setAttribute("cy",1000)
-    circle.setAttribute("r",z.r)
-    circle.setAttribute("class","zone")
-    circle.setAttribute("stroke",z.color)
-    circle.setAttribute("fill",z.color)
-    target.appendChild(circle)
+  planetsData.forEach(p=>{
+    const circle = document.createElementNS("http://www.w3.org/2000/svg","circle")
+    circle.setAttribute("cx", p.x)
+    circle.setAttribute("cy", p.y)
+    circle.setAttribute("r",6)
+    if(factionMode) circle.setAttribute("fill", getFactionColor(p.faction))
+    else circle.setAttribute("fill", getRegionColor(p.region))
+    if(!zonesVisible) circle.setAttribute("fill","#fff")
+    
+    circle.onmouseenter = e=>{
+      tooltip.style.display="block"
+      tooltip.innerHTML = `<b>${p.name}</b><br>${p.description}<br><img src="${p.image}" style="width:100%;max-width:200px"><br><i>${p.faction}</i>`
+    }
+    circle.onmousemove = e=>{
+      tooltip.style.left=e.clientX+10+"px"
+      tooltip.style.top=e.clientY+10+"px"
+    }
+    circle.onclick = ()=> window.open(p.jedipedia,"_blank")
+    map.appendChild(circle)
   })
 }
 
-// --- Routes (Annotations, can be extended) ---
-function drawRoutes(){
-  const exampleRoutes = [
-    ["Coruscant","Naboo"],
-    ["Coruscant","Tatooine"],
-    ["Tatooine","Dagobah"],
-    ["Geonosis","Coruscant"],
-    ["Yavin 4","Endor"]
-  ]
-  exampleRoutes.forEach(r=>{
-    const p1=planetsData.find(x=>x.name===r[0])
-    const p2=planetsData.find(x=>x.name===r[1])
-    if(p1 && p2 && !(p1.source==="Legends" && !showLegends) && !(p2.source==="Legends" && !showLegends)){
-      const line=document.createElementNS("http://www.w3.org/2000/svg","line")
+// Color helpers
+function getRegionColor(region){
+  switch(region){
+    case "Core": return "#00ffff"
+    case "Mid Rim": return "#00ff00"
+    case "Outer Rim": return "#ffaa00"
+    case "Unknown": return "#ff00ff"
+    default: return "#fff"
+  }
+}
+function getFactionColor(faction){
+  switch(faction){
+    case "Galactic Republic": return "#1E90FF"
+    case "Empire": return "#FF0000"
+    case "Rebel Alliance": return "#00FF00"
+    case "Jedi": return "#FFD700"
+    default: return "#888"
+  }
+}
+
+// Hyperraum Routen
+let routes = [["Coruscant","Tatooine"],["Tatooine","Dagobah"],["Naboo","Geonosis"],["Hoth","Endor"]]
+function renderRoutes(){
+  // Entferne alte Linien
+  map.querySelectorAll("line").forEach(l=>l.remove())
+  if(!routesVisible) return
+  routes.forEach(r=>{
+    const p1 = planetsData.find(p=>p.name===r[0])
+    const p2 = planetsData.find(p=>p.name===r[1])
+    if(p1 && p2){
+      const line = document.createElementNS("http://www.w3.org/2000/svg","line")
       line.setAttribute("x1",p1.x)
       line.setAttribute("y1",p1.y)
       line.setAttribute("x2",p2.x)
       line.setAttribute("y2",p2.y)
-      line.setAttribute("class","route")
+      line.setAttribute("stroke","#888")
+      line.setAttribute("stroke-width","2")
       map.appendChild(line)
     }
   })
 }
 
-// --- Fraktionsfarben ---
-function getFactionColor(f){
-  const col={
-    "Galactic Republic":"#00aaff",
-    "Empire":"#ff0000",
-    "Rebel Alliance":"#00ff88",
-    "Hutt Cartel":"#ffa500",
-    "Jedi":"#ffff00"
+// Search + Zoom auf Planet
+search.oninput = ()=>{
+  const value = search.value.toLowerCase()
+  const planet = planetsData.find(p=>p.name.toLowerCase().includes(value))
+  if(planet){
+    viewBox.x = planet.x - viewBox.w/2
+    viewBox.y = planet.y - viewBox.h/2
+    setViewBox()
   }
-  return col[f]||"#ffffff"
 }
-
-// --- Toggles ---
-function toggleFaction(){ factionMode=!factionMode; drawMap() }
-function toggleRoutes(){ routesVisible=!routesVisible; drawMap() }
-function toggleZones(){ zonesVisible=!zonesVisible; drawMap() }
-function toggleLegends(){ showLegends=!showLegends; drawMap() }
-
-// --- Search Auto‑Zoom ---
-search.addEventListener("input",()=>{
-  const q=search.value.toLowerCase()
-  const p=planetsData.find(pl=>pl.name.toLowerCase().startsWith(q))
-  if(p){
-    viewBox.w=400
-    viewBox.h=400
-    viewBox.x=p.x-200
-    viewBox.y=p.y-200
-    updateViewBox()
-  }
-})
 </script>
 
 </body>
