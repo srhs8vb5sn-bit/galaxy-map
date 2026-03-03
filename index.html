@@ -5,136 +5,188 @@
 <title>Galaxy Map</title>
 <style>
 body { margin:0; background:black; color:white; font-family:Arial; overflow:hidden; }
-#ui { position:absolute; top:10px; left:10px; z-index:10; }
+#ui { position:absolute; top:10px; left:10px; z-index:20; }
 #search { padding:8px; font-size:16px; width:250px; }
-#tooltip { position:absolute; background:#111; border:1px solid #555; padding:8px; display:none; pointer-events:none; max-width:250px; }
-#minimapContainer { position:absolute; bottom:10px; right:10px; width:200px; height:200px; border:1px solid #555; background:#000; z-index:10; }
+#tooltip {
+ position:absolute;
+ background:#111;
+ border:1px solid #555;
+ padding:12px;
+ display:none;
+ pointer-events:none;
+ width:260px;
+}
+#tooltip img {
+ width:100%;
+ height:140px;
+ object-fit:cover;
+ margin-top:8px;
+ border:1px solid #333;
+}
+#minimapContainer {
+ position:absolute;
+ bottom:10px;
+ right:10px;
+ width:200px;
+ height:200px;
+ border:1px solid #555;
+ background:#000;
+ z-index:20;
+}
 #minimap { width:100%; height:100%; }
-circle:hover { cursor:pointer; }
-#viewportRect { fill:none; stroke:#fff; stroke-width:2; }
+.sector-label {
+ fill:#555;
+ font-size:60px;
+ opacity:0.15;
+ pointer-events:none;
+}
 </style>
 </head>
 <body>
 
 <div id="ui">
-<input id="search" placeholder="Planet suchen"><br>
-<button onclick="toggleFaction()">Fraktionsmodus</button>
-<button onclick="toggleRoutes()">Hyperraumrouten</button>
+<input id="search" placeholder="Planet suchen">
 </div>
+
+<div id="tooltip"></div>
 
 <div id="minimapContainer">
 <svg id="minimap" viewBox="0 0 2000 2000"></svg>
 </div>
 
-<div id="tooltip"></div>
 <svg id="map" width="100vw" height="100vh" viewBox="0 0 2000 2000"></svg>
 
 <script>
-const map=document.getElementById("map");
-const minimap=document.getElementById("minimap");
-const tooltip=document.getElementById("tooltip");
-const search=document.getElementById("search");
+const map=document.getElementById("map")
+const minimap=document.getElementById("minimap")
+const tooltip=document.getElementById("tooltip")
+const search=document.getElementById("search")
 
-let factionMode=false, routesVisible=true, planetsData=[], routes=[
- ["Coruscant","Corellia"], ["Corellia","Tatooine"], ["Coruscant","Naboo"],
- ["Naboo","Geonosis"], ["Hoth","Endor"], ["Endor","Coruscant"],
- ["Tatooine","Dagobah"], ["Dagobah","Ahch-To"]
-];
+let planets=[]
+let viewBox={x:600,y:600,w:800,h:800}
 
-let viewBox={x:900,y:850,w:800,h:800};
+// ===== SEKTOR-DEFINITION =====
+const sectors=[
+ {name:"Core Worlds", x:800, y:800, radius:200},
+ {name:"Inner Rim", x:800, y:800, radius:400},
+ {name:"Mid Rim", x:800, y:800, radius:650},
+ {name:"Outer Rim", x:800, y:800, radius:900},
+ {name:"Unknown Regions", x:800, y:800, radius:1200}
+]
 
-// Mini-Map Viewport Rect
-const viewportRect=document.createElementNS("http://www.w3.org/2000/svg","rect");
-viewportRect.setAttribute("id","viewportRect");
-minimap.appendChild(viewportRect);
+// ===== MAJOR PLANETS =====
+const majorPlanets=[
+ {name:"Coruscant", x:1000, y:1000, sector:"Core Worlds", desc:"Galaktisches Zentrum."},
+ {name:"Tatooine", x:1500, y:1200, sector:"Outer Rim", desc:"Wüstenplanet."},
+ {name:"Naboo", x:1150, y:1050, sector:"Mid Rim", desc:"Heimat von Padmé."},
+ {name:"Kashyyyk", x:1200, y:1100, sector:"Mid Rim", desc:"Wookiee-Welt."},
+ {name:"Hoth", x:1500, y:850, sector:"Outer Rim", desc:"Eisplanet."}
+]
 
-// Gruppen
-const planetGroup=document.createElementNS("http://www.w3.org/2000/svg","g"); map.appendChild(planetGroup);
-const routeGroup=document.createElementNS("http://www.w3.org/2000/svg","g"); map.appendChild(routeGroup);
-const miniGroup=document.createElementNS("http://www.w3.org/2000/svg","g"); minimap.appendChild(miniGroup);
+// ===== RANDOM GENERATOR BIS 1000 =====
+function generatePlanets(){
+ planets=[...majorPlanets]
 
-// Farben
-function factionColor(aff){ const colors={"Galactic Republic":"#0f0","Republic":"#0f0","Empire":"#f00","Rebel Alliance":"#00f","Resistance":"#0f0","First Order remnants":"#f0f","Jedi":"#ff0","Sith Eternal":"#f80","Chiss Ascendancy":"#0ff","Hutt Cartel":"#fa0","Nightsisters":"#a0a","Kaminoans":"#0af","Separatists":"#f80","Jedi legacy":"#ff0"}; return colors[aff]||"#fff"; }
+ const sectorZones=[
+  {name:"Core Worlds", min:0, max:200},
+  {name:"Inner Rim", min:200, max:400},
+  {name:"Mid Rim", min:400, max:650},
+  {name:"Outer Rim", min:650, max:900},
+  {name:"Unknown Regions", min:900, max:1200}
+ ]
 
-// JSON laden
-fetch("planets.json").then(r=>r.json()).then(data=>{ planetsData=data; drawPlanets(); drawRoutes(); drawMiniViewport(); });
+ while(planets.length<1000){
+  const zone=sectorZones[Math.floor(Math.random()*sectorZones.length)]
+  const angle=Math.random()*Math.PI*2
+  const dist=Math.random()*(zone.max-zone.min)+zone.min
+  const x=1000+Math.cos(angle)*dist
+  const y=1000+Math.sin(angle)*dist
 
-// Draw Planets
-function drawPlanets(){
- planetGroup.innerHTML=""; miniGroup.innerHTML="";
- planetsData.forEach((p,i)=>{
-  let c=document.createElementNS("http://www.w3.org/2000/svg","circle");
-  c.setAttribute("cx",p.x); c.setAttribute("cy",p.y); c.setAttribute("r",6);
-  c.setAttribute("fill",factionMode?factionColor(p.affiliation):"#0ff");
-  c.onmouseenter=e=>{ tooltip.style.display="block"; tooltip.innerHTML=`<b>${p.name}</b><br>${p.affiliation}<br>${p.description}`; }
-  c.onmousemove=e=>{ tooltip.style.left=e.clientX+10+"px"; tooltip.style.top=e.clientY+10+"px"; }
-  c.onmouseleave=e=>tooltip.style.display="none";
-  c.onclick=e=>smoothCenter(p.x,p.y);
-  planetGroup.appendChild(c);
+  planets.push({
+   name:"System-"+planets.length,
+   x,y,
+   sector:zone.name,
+   desc:"Registriertes Sternsystem im "+zone.name+"."
+  })
+ }
+}
 
-  let mc=document.createElementNS("http://www.w3.org/2000/svg","circle");
-  mc.setAttribute("cx",p.x); mc.setAttribute("cy",p.y); mc.setAttribute("r",3);
-  mc.setAttribute("fill",factionMode?factionColor(p.affiliation):"#0ff");
-  mc.onclick=e=>smoothCenter(p.x,p.y);
-  miniGroup.appendChild(mc);
+generatePlanets()
+
+// ===== SEKTOR LABELS =====
+sectors.forEach(s=>{
+ const text=document.createElementNS("http://www.w3.org/2000/svg","text")
+ text.setAttribute("x",1000+s.radius/2)
+ text.setAttribute("y",1000)
+ text.setAttribute("class","sector-label")
+ text.textContent=s.name
+ map.appendChild(text)
+})
+
+// ===== PLANET RENDER =====
+const planetGroup=document.createElementNS("http://www.w3.org/2000/svg","g")
+map.appendChild(planetGroup)
+
+planets.forEach(p=>{
+ const c=document.createElementNS("http://www.w3.org/2000/svg","circle")
+ c.setAttribute("cx",p.x)
+ c.setAttribute("cy",p.y)
+ c.setAttribute("r",3)
+ c.setAttribute("fill","#0ff")
+
+ c.onmouseenter=e=>{
+  tooltip.style.display="block"
+  tooltip.innerHTML=`
+   <b>${p.name}</b><br>
+   ${p.sector}<br><br>
+   ${p.desc}
+   <img src="https://source.unsplash.com/300x200/?planet,space">
+  `
+ }
+
+ c.onmousemove=e=>{
+  tooltip.style.left=e.clientX+15+"px"
+  tooltip.style.top=e.clientY+15+"px"
+ }
+
+ c.onmouseleave=()=>tooltip.style.display="none"
+
+ planetGroup.appendChild(c)
+})
+
+// ===== PAN =====
+let dragging=false,lastX,lastY
+map.onmousedown=e=>{dragging=true;lastX=e.clientX;lastY=e.clientY}
+map.onmouseup=e=>dragging=false
+map.onmousemove=e=>{
+ if(dragging){
+  let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth)
+  let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight)
+  viewBox.x-=dx
+  viewBox.y-=dy
+  map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
+  lastX=e.clientX
+  lastY=e.clientY
+ }
+}
+
+// ===== ZOOM =====
+map.onwheel=e=>{
+ e.preventDefault()
+ const zoom=e.deltaY<0?0.9:1.1
+ viewBox.w*=zoom
+ viewBox.h*=zoom
+ map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
+}
+
+// ===== SEARCH =====
+search.oninput=e=>{
+ const val=search.value.toLowerCase()
+ Array.from(planetGroup.children).forEach((c,i)=>{
+  const show=planets[i].name.toLowerCase().includes(val)
+  c.style.display=show?"block":"none"
  })
 }
-
-// Draw Routes
-function drawRoutes(){
- routeGroup.innerHTML="";
- if(!routesVisible) return;
- routes.forEach(r=>{
-  let p1=planetsData.find(pl=>pl.name===r[0]); let p2=planetsData.find(pl=>pl.name===r[1]); if(!p1||!p2) return;
-  let line=document.createElementNS("http://www.w3.org/2000/svg","line");
-  line.setAttribute("x1",p1.x); line.setAttribute("y1",p1.y);
-  line.setAttribute("x2",p2.x); line.setAttribute("y2",p2.y);
-  line.setAttribute("stroke","#ff0"); line.setAttribute("stroke-width","2"); line.setAttribute("stroke-dasharray","10");
-  routeGroup.appendChild(line); animateLine(line);
- })
-}
-
-// Animate Hyperraumlinien
-function animateLine(line){ let offset=0; function anim(){ offset-=2; line.setAttribute("stroke-dashoffset",offset); requestAnimationFrame(anim); } anim(); }
-
-// Toggle
-function toggleFaction(){ factionMode=!factionMode; drawPlanets(); drawMiniViewport(); }
-function toggleRoutes(){ routesVisible=!routesVisible; drawRoutes(); }
-
-// Smooth Center
-function smoothCenter(x,y){ const steps=30; let dx=(x-viewBox.x-viewBox.w/2)/steps; let dy=(y-viewBox.y-viewBox.h/2)/steps; let i=0; const interval=setInterval(()=>{ viewBox.x+=dx; viewBox.y+=dy; updateMap(); i++; if(i>=steps) clearInterval(interval); },16); }
-
-// Update Map
-function updateMap(){ map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`); drawMiniViewport(); }
-
-// Drag + Pan
-let dragging=false,lastX,lastY;
-map.onmousedown=e=>{ if(e.button!==0)return; dragging=true; lastX=e.clientX; lastY=e.clientY; }
-map.onmouseup=e=>dragging=false; map.onmouseleave=e=>dragging=false;
-map.onmousemove=e=>{ if(dragging){ let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth); let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight); viewBox.x-=dx; viewBox.y-=dy; updateMap(); lastX=e.clientX; lastY=e.clientY; } }
-
-// Scroll Zoom
-map.onwheel=e=>{ e.preventDefault(); const zoom=e.deltaY<0?0.95:1.05; viewBox.w*=zoom; viewBox.h*=zoom; updateMap(); }
-
-// Search
-search.oninput=e=>{ let value=search.value.toLowerCase(); planetsData.forEach((p,i)=>{ const display=p.name.toLowerCase().includes(value); planetGroup.children[i].style.display=display?"block":"none"; miniGroup.children[i].style.display=display?"block":"none"; }) }
-
-// Mini-Map Viewport Rect
-function drawMiniViewport(){
- viewportRect.setAttribute("x",viewBox.x);
- viewportRect.setAttribute("y",viewBox.y);
- viewportRect.setAttribute("width",viewBox.w);
- viewportRect.setAttribute("height",viewBox.h);
-}
-
-// Mini-Map Click
-minimap.onclick=e=>{
- const pt=e.offsetX/2000*2000; // scaling is 1:1, viewBox shift
- const mx=(e.offsetX/200)*2000; const my=(e.offsetY/200)*2000;
- viewBox.x=mx-viewBox.w/2; viewBox.y=my-viewBox.h/2; updateMap();
-}
-
 </script>
-
 </body>
 </html>
