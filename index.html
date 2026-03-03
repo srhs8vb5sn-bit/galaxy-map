@@ -38,14 +38,19 @@ const search=document.getElementById("search")
 let viewBox={x:600,y:600,w:800,h:800}
 let planets=[]
 
+// ---------- LOAD JSON ----------
 fetch("planets.json")
-.then(r=>r.json())
+.then(res=>res.json())
 .then(data=>{
- generate(data)
- draw()
+ generatePlanets(data)
+ drawPlanets()
+})
+.catch(err=>{
+ console.error("JSON Fehler:",err)
 })
 
-function generate(data){
+// ---------- GENERATE ----------
+function generatePlanets(data){
  const zones=[
   {name:"Core Worlds", min:0, max:200, list:data.core},
   {name:"Inner Rim", min:200, max:400, list:data.innerRim},
@@ -55,11 +60,14 @@ function generate(data){
  ]
 
  zones.forEach(zone=>{
+  if(!zone.list) return
+
   zone.list.forEach(name=>{
    const angle=Math.random()*Math.PI*2
    const dist=Math.random()*(zone.max-zone.min)+zone.min
+
    planets.push({
-    name,
+    name:name,
     sector:zone.name,
     x:1000+Math.cos(angle)*dist,
     y:1000+Math.sin(angle)*dist
@@ -68,7 +76,8 @@ function generate(data){
  })
 }
 
-function draw(){
+// ---------- DRAW ----------
+function drawPlanets(){
  planets.forEach(p=>{
   const c=document.createElementNS("http://www.w3.org/2000/svg","circle")
   c.setAttribute("cx",p.x)
@@ -76,28 +85,30 @@ function draw(){
   c.setAttribute("r",4)
   c.setAttribute("fill","#0ff")
 
-  c.onmouseenter=e=>{
+  c.addEventListener("mouseenter",e=>{
    tooltip.style.display="block"
    tooltip.innerHTML=`
     <b>${p.name}</b><br>
     ${p.sector}
     <img src="https://source.unsplash.com/300x200/?planet,space">
    `
-  }
+  })
 
-  c.onmousemove=e=>{
+  c.addEventListener("mousemove",e=>{
    tooltip.style.left=e.clientX+15+"px"
    tooltip.style.top=e.clientY+15+"px"
-  }
+  })
 
-  c.onmouseleave=()=>tooltip.style.display="none"
+  c.addEventListener("mouseleave",()=>{
+   tooltip.style.display="none"
+  })
 
   map.appendChild(c)
  })
 }
 
-// Suche + Auto-Zoom
-search.oninput=e=>{
+// ---------- SEARCH + AUTO ZOOM ----------
+search.addEventListener("input",e=>{
  const val=search.value.toLowerCase()
  const found=planets.find(p=>p.name.toLowerCase()===val)
  if(found){
@@ -105,34 +116,44 @@ search.oninput=e=>{
   viewBox.h=400
   viewBox.x=found.x-200
   viewBox.y=found.y-200
-  map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
+  updateViewBox()
  }
-}
+})
 
-// Drag
+// ---------- PAN ----------
 let dragging=false,lastX,lastY
-map.onmousedown=e=>{dragging=true;lastX=e.clientX;lastY=e.clientY}
-map.onmouseup=e=>dragging=false
-map.onmousemove=e=>{
- if(dragging){
-  let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth)
-  let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight)
-  viewBox.x-=dx
-  viewBox.y-=dy
-  map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
-  lastX=e.clientX
-  lastY=e.clientY
- }
-}
+map.addEventListener("mousedown",e=>{
+ dragging=true
+ lastX=e.clientX
+ lastY=e.clientY
+})
+map.addEventListener("mouseup",()=>dragging=false)
+map.addEventListener("mouseleave",()=>dragging=false)
 
-// Zoom
-map.onwheel=e=>{
+map.addEventListener("mousemove",e=>{
+ if(!dragging) return
+ let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth)
+ let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight)
+ viewBox.x-=dx
+ viewBox.y-=dy
+ updateViewBox()
+ lastX=e.clientX
+ lastY=e.clientY
+})
+
+// ---------- ZOOM ----------
+map.addEventListener("wheel",e=>{
  e.preventDefault()
  const zoom=e.deltaY<0?0.9:1.1
  viewBox.w*=zoom
  viewBox.h*=zoom
+ updateViewBox()
+})
+
+function updateViewBox(){
  map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
 }
 </script>
+
 </body>
 </html>
