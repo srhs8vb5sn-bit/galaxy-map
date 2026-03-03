@@ -19,15 +19,30 @@ body {
  top:10px;
  left:10px;
  z-index:10;
+ display:flex;
+ flex-direction:column;
+ gap:6px;
 }
 
 #search {
  padding:8px;
  font-size:16px;
- width:250px;
+ width:260px;
  background:#111;
  color:white;
  border:1px solid #555;
+}
+
+button {
+ padding:6px;
+ background:#111;
+ color:white;
+ border:1px solid #555;
+ cursor:pointer;
+}
+
+button:hover {
+ background:#222;
 }
 
 #tooltip {
@@ -47,11 +62,6 @@ svg {
  height:100vh;
 }
 
-.Core { fill:#00ffff; }
-.Mid { fill:#00ff00; }
-.Outer { fill:#ffaa00; }
-.Unknown { fill:#ff00ff; }
-
 circle {
  transition: all 0.15s ease;
 }
@@ -62,8 +72,306 @@ circle:hover {
  cursor:pointer;
 }
 
+.route {
+ stroke:#444;
+ stroke-width:2;
+ opacity:0.4;
+}
+
 </style>
 </head>
+<body>
+
+<div id="ui">
+<input id="search" placeholder="Search planet...">
+<button id="toggleColor">Toggle Faction Colors</button>
+<button id="toggleRoutes">Toggle Hyperroutes</button>
+</div>
+
+<div id="tooltip"></div>
+
+<svg id="map">
+<g id="viewport"></g>
+<g id="routesLayer"></g>
+</svg>
+
+<script>
+
+const svg = document.getElementById("map")
+const viewport = document.getElementById("viewport")
+const routesLayer = document.getElementById("routesLayer")
+const tooltip = document.getElementById("tooltip")
+const search = document.getElementById("search")
+const toggleColorBtn = document.getElementById("toggleColor")
+const toggleRoutesBtn = document.getElementById("toggleRoutes")
+
+let scale = 1
+let offsetX = 0
+let offsetY = 0
+let planetsData = []
+let useFactionColors = false
+let routesVisible = false
+
+// --------------------
+// ZOOM
+// --------------------
+
+svg.onwheel = e => {
+ e.preventDefault()
+ const zoomSpeed = 0.0015
+ const zoom = 1 - e.deltaY * zoomSpeed
+ scale *= zoom
+ scale = Math.min(Math.max(0.2, scale), 8)
+ updateTransform()
+}
+
+// --------------------
+// DRAG
+// --------------------
+
+let dragging = false
+let lastX, lastY
+
+svg.onmousedown = e => {
+ dragging = true
+ lastX = e.clientX
+ lastY = e.clientY
+}
+
+svg.onmouseup = () => dragging = false
+svg.onmouseleave = () => dragging = false
+
+svg.onmousemove = e => {
+
+ if(dragging){
+  offsetX += e.clientX - lastX
+  offsetY += e.clientY - lastY
+  lastX = e.clientX
+  lastY = e.clientY
+  updateTransform()
+ }
+
+}
+
+// --------------------
+// TRANSFORM
+// --------------------
+
+function updateTransform(){
+ viewport.setAttribute(
+  "transform",
+  `translate(${offsetX},${offsetY}) scale(${scale})`
+ )
+ routesLayer.setAttribute(
+  "transform",
+  `translate(${offsetX},${offsetY}) scale(${scale})`
+ )
+}
+
+// --------------------
+// SMOOTH CAMERA
+// --------------------
+
+function smoothCenter(x,y){
+
+ const targetX = window.innerWidth/2 - x * scale
+ const targetY = window.innerHeight/2 - y * scale
+
+ let startX = offsetX
+ let startY = offsetY
+ let progress = 0
+
+ function animate(){
+  progress += 0.05
+  if(progress >= 1){
+   offsetX = targetX
+   offsetY = targetY
+   updateTransform()
+   return
+  }
+
+  offsetX = startX + (targetX - startX) * progress
+  offsetY = startY + (targetY - startY) * progress
+  updateTransform()
+
+  requestAnimationFrame(animate)
+ }
+
+ animate()
+}
+
+// --------------------
+// LOAD PLANETS
+// --------------------
+
+fetch("planets.json")
+.then(r => r.json())
+.then(planets => {
+
+ planetsData = planets
+
+ planets.forEach(p => {
+
+  const circle = document.createElementNS(
+   "http://www.w3.org/2000/svg","circle"
+  )
+
+  circle.setAttribute("cx", p.x)
+  circle.setAttribute("cy", p.y)
+  circle.setAttribute("r", 6)
+
+  circle.dataset.name = p.name.toLowerCase()
+  circle.dataset.region = p.region
+  circle.dataset.faction = p.affiliation || "Neutral"
+
+  applyColor(circle)
+
+  circle.onmouseenter = e => {
+   tooltip.style.display="block"
+   tooltip.innerHTML = `
+   <b style="font-size:16px">${p.name}</b><br>
+   <span style="color:#aaa">${p.region}</span><br><br>
+   <span style="color:#00bfff">Era:</span> ${p.era || "Unknown"}<br>
+   <span style="color:#ffcc00">Affiliation:</span> ${p.affiliation || "Unknown"}<br><br>
+   <span style="color:#ccc">${p.description || ""}</span>
+   `
+  }
+
+  circle.onmousemove = e => {
+   tooltip.style.left = e.clientX+15+"px"
+   tooltip.style.top = e.clientY+15+"px"
+  }
+
+  circle.onmouseleave = () =>
+   tooltip.style.display="none"
+
+  circle.onclick = () => smoothCenter(p.x,p.y)
+
+  viewport.appendChild(circle)
+
+ })
+
+ offsetX = window.innerWidth/2 - 1000
+ offsetY = window.innerHeight/2 - 1000
+ updateTransform()
+
+})
+
+// --------------------
+// COLOR SYSTEM
+// --------------------
+
+function applyColor(circle){
+
+ if(useFactionColors){
+
+  const f = circle.dataset.faction
+
+  if(f.includes("Republic")) circle.setAttribute("fill","#00bfff")
+  else if(f.includes("Empire")) circle.setAttribute("fill","#ff4444")
+  else if(f.includes("Rebel")) circle.setAttribute("fill","#ffaa00")
+  else if(f.includes("Sith")) circle.setAttribute("fill","#ff00ff")
+  else circle.setAttribute("fill","#888")
+
+ } else {
+
+  const r = circle.dataset.region
+
+  if(r.includes("Core")) circle.setAttribute("fill","#00ffff")
+  else if(r.includes("Mid")) circle.setAttribute("fill","#00ff00")
+  else if(r.includes("Outer")) circle.setAttribute("fill","#ffaa00")
+  else circle.setAttribute("fill","#ff00ff")
+
+ }
+
+}
+
+toggleColorBtn.onclick = () => {
+ useFactionColors = !useFactionColors
+ document.querySelectorAll("circle")
+ .forEach(applyColor)
+}
+
+// --------------------
+// SEARCH + AUTO CENTER
+// --------------------
+
+search.oninput = () => {
+
+ const value = search.value.toLowerCase()
+
+ document.querySelectorAll("circle")
+ .forEach(circle => {
+
+  const match = circle.dataset.name.includes(value)
+  circle.style.display = match ? "" : "none"
+
+ })
+
+ const exact = planetsData.find(
+  p => p.name.toLowerCase() === value
+ )
+
+ if(exact) smoothCenter(exact.x, exact.y)
+
+}
+
+// --------------------
+// HYPERROUTES
+// --------------------
+
+const hyperRoutes = [
+ ["Coruscant","Corellia"],
+ ["Coruscant","Naboo"],
+ ["Corellia","Tatooine"],
+ ["Tatooine","Naboo"],
+ ["Naboo","Kamino"],
+ ["Kamino","Geonosis"]
+]
+
+function drawRoutes(){
+
+ routesLayer.innerHTML = ""
+
+ hyperRoutes.forEach(route => {
+
+  const p1 = planetsData.find(p=>p.name===route[0])
+  const p2 = planetsData.find(p=>p.name===route[1])
+
+  if(!p1 || !p2) return
+
+  const line = document.createElementNS(
+   "http://www.w3.org/2000/svg","line"
+  )
+
+  line.setAttribute("x1",p1.x)
+  line.setAttribute("y1",p1.y)
+  line.setAttribute("x2",p2.x)
+  line.setAttribute("y2",p2.y)
+  line.setAttribute("class","route")
+
+  routesLayer.appendChild(line)
+
+ })
+
+}
+
+toggleRoutesBtn.onclick = () => {
+
+ routesVisible = !routesVisible
+
+ if(routesVisible){
+  drawRoutes()
+ } else {
+  routesLayer.innerHTML=""
+ }
+
+}
+
+</script>
+
+</body>
+</html></head>
 <body>
 
 <div id="ui">
