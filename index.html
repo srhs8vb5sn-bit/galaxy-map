@@ -1,6 +1,68 @@
-fetch("planets.json") to {
-  stroke-dashoffset:-16;
- }
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Galaxy Map</title>
+
+<style>
+body {
+ margin:0;
+ background:black;
+ overflow:hidden;
+ font-family:Arial;
+ color:white;
+}
+
+#ui {
+ position:absolute;
+ top:10px;
+ left:10px;
+ z-index:10;
+ background:rgba(0,0,0,0.7);
+ padding:10px;
+ border-radius:8px;
+}
+
+button {
+ margin-top:5px;
+ width:160px;
+}
+
+#minimapContainer{
+ position:absolute;
+ right:20px;
+ bottom:20px;
+ width:250px;
+ height:250px;
+ border:2px solid white;
+ background:black;
+}
+
+#minimap{
+ width:100%;
+ height:100%;
+}
+
+.tooltip{
+ position:absolute;
+ background:rgba(0,0,0,0.9);
+ padding:10px;
+ border-radius:6px;
+ pointer-events:none;
+ display:none;
+ max-width:250px;
+}
+
+.route {
+ stroke:#00ffff;
+ stroke-width:2;
+ fill:none;
+ stroke-dasharray:8 8;
+ animation:pulse 2s linear infinite;
+}
+
+@keyframes pulse {
+ to { stroke-dashoffset:-16; }
 }
 </style>
 </head>
@@ -21,7 +83,6 @@ fetch("planets.json") to {
 <svg id="map" width="100vw" height="100vh" viewBox="0 0 2000 2000"></svg>
 
 <script>
-
 const map = document.getElementById("map")
 const minimap = document.getElementById("minimap")
 const tooltip = document.getElementById("tooltip")
@@ -48,8 +109,8 @@ function setViewBox(){
 }
 
 function smoothCenter(x,y){
- const targetX = x-200
- const targetY = y-200
+ const targetX = x - viewBox.w/2
+ const targetY = y - viewBox.h/2
  let steps=30
  let dx=(targetX-viewBox.x)/steps
  let dy=(targetY-viewBox.y)/steps
@@ -77,6 +138,7 @@ function draw(){
  map.innerHTML=""
  minimap.innerHTML=""
 
+ // Hyperraumlinien
  if(routesVisible){
   routes.forEach(r=>{
    const a = planetsData.find(p=>p.name===r[0])
@@ -93,13 +155,13 @@ function draw(){
   })
  }
 
+ // Planeten zeichnen
  planetsData.forEach(p=>{
   const circle=document.createElementNS("http://www.w3.org/2000/svg","circle")
   circle.setAttribute("cx",p.x)
   circle.setAttribute("cy",p.y)
   circle.setAttribute("r",6)
-  circle.setAttribute("fill",
-   factionMode ? factionColor(p.affiliation) : "white")
+  circle.setAttribute("fill",factionMode ? factionColor(p.affiliation) : "white")
   circle.dataset.name=p.name.toLowerCase()
 
   circle.onmouseenter=e=>{
@@ -111,9 +173,11 @@ function draw(){
    tooltip.style.top=e.pageY+10+"px"
   }
   circle.onmouseleave=()=>tooltip.style.display="none"
+  circle.onclick=()=>smoothCenter(p.x,p.y)
 
   map.appendChild(circle)
 
+  // Mini-Map
   const mini=document.createElementNS("http://www.w3.org/2000/svg","circle")
   mini.setAttribute("cx",p.x)
   mini.setAttribute("cy",p.y)
@@ -122,6 +186,7 @@ function draw(){
   minimap.appendChild(mini)
  })
 
+ // Mini-Map Viewport Rechteck
  const rect=document.createElementNS("http://www.w3.org/2000/svg","rect")
  rect.setAttribute("x",viewBox.x)
  rect.setAttribute("y",viewBox.y)
@@ -132,22 +197,26 @@ function draw(){
  minimap.appendChild(rect)
 }
 
+// Search
 search.oninput=()=>{
  const val=search.value.toLowerCase()
  const found=planetsData.find(p=>p.name.toLowerCase()===val)
  if(found) smoothCenter(found.x,found.y)
 }
 
+// Toggle Fraktionen
 function toggleFaction(){
  factionMode=!factionMode
  draw()
 }
 
+// Toggle Routen
 function toggleRoutes(){
  routesVisible=!routesVisible
  draw()
 }
 
+// Mini-Map Klick
 minimap.onclick=e=>{
  const rect=minimap.getBoundingClientRect()
  const scaleX=2000/rect.width
@@ -157,6 +226,7 @@ minimap.onclick=e=>{
  smoothCenter(x,y)
 }
 
+// Map Zoom
 map.addEventListener("wheel",e=>{
  e.preventDefault()
  const zoom=e.deltaY>0?1.1:0.9
@@ -166,15 +236,17 @@ map.addEventListener("wheel",e=>{
  draw()
 })
 
+// ✅ Planeten laden
 fetch("planets.json")
 .then(r=>r.json())
 .then(data=>{
- planetsData=data
+ planetsData = data
+ viewBox = {x:900, y:850, w:800, h:800} // Startbereich
  draw()
 })
 
 setViewBox()
-
 </script>
+
 </body>
 </html>
