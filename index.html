@@ -11,6 +11,7 @@ body {
   overflow:hidden;
   user-select:none;
 }
+
 #ui {
   position:absolute;
   top:10px;
@@ -20,6 +21,7 @@ body {
   padding:10px;
   border-radius:5px;
 }
+
 #search { padding:6px; width:200px; }
 button {
   display:block;
@@ -31,6 +33,7 @@ button {
   border:1px solid #444;
   cursor:pointer;
 }
+
 #tooltip {
   position:absolute;
   background:#111;
@@ -47,6 +50,7 @@ button {
   object-fit:cover;
   margin:6px 0;
 }
+
 #minimapContainer {
   position:absolute;
   bottom:10px;
@@ -57,15 +61,15 @@ button {
   background:black;
   z-index:10;
 }
-#minimap {
-  width:100%;
-  height:100%;
-}
+
+#minimap { width:100%; height:100%; }
+
 circle.planet:hover {
   stroke:white;
   stroke-width:1.2px;
   cursor:pointer;
 }
+
 line.route {
   stroke:#0ff;
   stroke-width:2;
@@ -73,7 +77,7 @@ line.route {
   animation:pulse 2s linear infinite;
   opacity:0.6;
 }
-@keyframes pulse{ 0%{stroke-dashoffset:0} 100%{stroke-dashoffset:16} }
+
 .zone {
   fill-opacity:0.08;
   stroke-width:3;
@@ -111,37 +115,38 @@ let factionMode=false
 let routesVisible=true
 let zonesVisible=true
 
-// Load JSON
+// --- Load Planets JSON ---
 fetch("planets.json")
 .then(r=>r.json())
 .then(data=>{
-  planetsData = data
+  planetsData=data
   drawMap()
 })
 
-// ViewBox
+// --- Update ViewBox ---
 function updateViewBox(){
   map.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
   minimap.setAttribute("viewBox", "0 0 2000 2000")
 }
 
-// Zoom
+// --- Zoom ---
 map.addEventListener("wheel", e=>{
   e.preventDefault()
-  const scale = e.deltaY<0?0.9:1.1
+  const scale = e.deltaY<0?0.8:1.2   // zoom etwas kräftiger
   viewBox.w*=scale
   viewBox.h*=scale
   updateViewBox()
 })
 
-// Pan
+// --- Pan (gedämpft) ---
 let dragging=false, lastX, lastY
 map.onmousedown=e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY }
 map.onmouseup=e=>dragging=false
+map.onmouseleave=e=>dragging=false
 map.onmousemove=e=>{
   if(!dragging) return
-  let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth)*0.5
-  let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight)*0.5
+  let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth)*0.4
+  let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight)*0.4
   viewBox.x-=dx
   viewBox.y-=dy
   updateViewBox()
@@ -149,7 +154,7 @@ map.onmousemove=e=>{
   lastY=e.clientY
 }
 
-// Draw Everything
+// --- Draw Entire Map ---
 function drawMap(){
   map.innerHTML=""
   minimap.innerHTML=""
@@ -157,15 +162,13 @@ function drawMap(){
   // Zones
   if(zonesVisible) drawZones(map)
 
-  // Hyperraumrouten
+  // Routes
   if(routesVisible) drawRoutes()
 
   // Planets
   planetsData.forEach((p,i)=>{
-    // Skip Legends if toggled off
     if(p.source==="Legends" && !showLegends) return
 
-    // Planet circle
     const c=document.createElementNS("http://www.w3.org/2000/svg","circle")
     c.setAttribute("cx",p.x)
     c.setAttribute("cy",p.y)
@@ -184,13 +187,12 @@ function drawMap(){
 
     map.appendChild(c)
 
-    // MiniMap point
     const mc=document.createElementNS("http://www.w3.org/2000/svg","circle")
     mc.setAttribute("cx",p.x)
     mc.setAttribute("cy",p.y)
     mc.setAttribute("r",2)
     mc.setAttribute("fill","#888")
-    mc.addEventListener("click",()=>{
+    mc.addEventListener("click", ()=>{
       viewBox.x=p.x-200
       viewBox.y=p.y-200
       viewBox.w=400
@@ -199,24 +201,20 @@ function drawMap(){
     })
     minimap.appendChild(mc)
   })
-
   updateViewBox()
 }
 
-// Tooltip
+// --- Tooltip ---
 function showTooltip(p){
   tooltip.style.display="block"
   tooltip.innerHTML=`
-    <b>${p.name}</b><br>
-    ${p.region}<br>
-    ${p.faction}<br>
+    <b>${p.name}</b><br>${p.region}<br>${p.faction}<br>
     <img src="${p.image}"><br>
-    <i>${p.description}</i><br>
-    <span>(Klick → Jedipedia)</span>
+    <i>${p.description}</i><br>(Klick → Jedipedia)
   `
 }
 
-// Zones
+// --- Zones ---
 function drawZones(target){
   const zoneDefs=[
     {r:200,color:"#00ffff"},
@@ -237,27 +235,31 @@ function drawZones(target){
   })
 }
 
-// Routes (simple example)
+// --- Routes (Annotations, can be extended) ---
 function drawRoutes(){
-  planetsData.forEach(p=>{
-    if(p.source==="Legends" && !showLegends) return
-  })
-  // Example fixed routes
-  let basics=[["Coruscant","Naboo"],["Tatooine","Dagobah"],["Coruscant","Alderaan"]]
-  basics.forEach(r=>{
-    const p1=planetsData.find(p=>p.name===r[0])
-    const p2=planetsData.find(p=>p.name===r[1])
-    if(p1 && p2){
+  const exampleRoutes = [
+    ["Coruscant","Naboo"],
+    ["Coruscant","Tatooine"],
+    ["Tatooine","Dagobah"],
+    ["Geonosis","Coruscant"],
+    ["Yavin 4","Endor"]
+  ]
+  exampleRoutes.forEach(r=>{
+    const p1=planetsData.find(x=>x.name===r[0])
+    const p2=planetsData.find(x=>x.name===r[1])
+    if(p1 && p2 && !(p1.source==="Legends" && !showLegends) && !(p2.source==="Legends" && !showLegends)){
       const line=document.createElementNS("http://www.w3.org/2000/svg","line")
-      line.setAttribute("x1",p1.x); line.setAttribute("y1",p1.y)
-      line.setAttribute("x2",p2.x); line.setAttribute("y2",p2.y)
+      line.setAttribute("x1",p1.x)
+      line.setAttribute("y1",p1.y)
+      line.setAttribute("x2",p2.x)
+      line.setAttribute("y2",p2.y)
       line.setAttribute("class","route")
       map.appendChild(line)
     }
   })
 }
 
-// Fraktionsfarben
+// --- Fraktionsfarben ---
 function getFactionColor(f){
   const col={
     "Galactic Republic":"#00aaff",
@@ -269,25 +271,13 @@ function getFactionColor(f){
   return col[f]||"#ffffff"
 }
 
-// Toggles
-function toggleFaction(){
-  factionMode=!factionMode
-  drawMap()
-}
-function toggleRoutes(){
-  routesVisible=!routesVisible
-  drawMap()
-}
-function toggleZones(){
-  zonesVisible=!zonesVisible
-  drawMap()
-}
-function toggleLegends(){
-  showLegends=!showLegends
-  drawMap()
-}
+// --- Toggles ---
+function toggleFaction(){ factionMode=!factionMode; drawMap() }
+function toggleRoutes(){ routesVisible=!routesVisible; drawMap() }
+function toggleZones(){ zonesVisible=!zonesVisible; drawMap() }
+function toggleLegends(){ showLegends=!showLegends; drawMap() }
 
-// Search
+// --- Search Auto‑Zoom ---
 search.addEventListener("input",()=>{
   const q=search.value.toLowerCase()
   const p=planetsData.find(pl=>pl.name.toLowerCase().startsWith(q))
