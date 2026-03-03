@@ -10,7 +10,8 @@ body { margin:0; background:black; color:white; font-family:Arial; overflow:hidd
 #tooltip { position:absolute; background:#111; border:1px solid #555; padding:8px; display:none; pointer-events:none; max-width:250px; }
 #minimapContainer { position:absolute; bottom:10px; right:10px; width:200px; height:200px; border:1px solid #555; background:#000; z-index:10; }
 #minimap { width:100%; height:100%; }
-circle:hover { fill:white !important; cursor:pointer; }
+circle:hover { cursor:pointer; }
+#viewportRect { fill:none; stroke:#fff; stroke-width:2; }
 </style>
 </head>
 <body>
@@ -29,41 +30,34 @@ circle:hover { fill:white !important; cursor:pointer; }
 <svg id="map" width="100vw" height="100vh" viewBox="0 0 2000 2000"></svg>
 
 <script>
-const map = document.getElementById("map");
-const minimap = document.getElementById("minimap");
-const tooltip = document.getElementById("tooltip");
-const search = document.getElementById("search");
+const map=document.getElementById("map");
+const minimap=document.getElementById("minimap");
+const tooltip=document.getElementById("tooltip");
+const search=document.getElementById("search");
 
 let factionMode=false, routesVisible=true, planetsData=[], routes=[
  ["Coruscant","Corellia"], ["Corellia","Tatooine"], ["Coruscant","Naboo"],
  ["Naboo","Geonosis"], ["Hoth","Endor"], ["Endor","Coruscant"],
  ["Tatooine","Dagobah"], ["Dagobah","Ahch-To"]
 ];
+
 let viewBox={x:900,y:850,w:800,h:800};
 
-function setViewBox(){ map.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`); }
-function smoothCenter(x,y){ const steps=30; let dx=(x-viewBox.x-viewBox.w/2)/steps; let dy=(y-viewBox.y-viewBox.h/2)/steps; let i=0; const interval=setInterval(()=>{ viewBox.x+=dx; viewBox.y+=dy; setViewBox(); i++; if(i>=steps) clearInterval(interval); },16); }
-
-// JSON laden
-fetch("planets.json").then(r=>r.json()).then(data=>{ planetsData=data; drawPlanets(); drawRoutes(); });
-
-// Drag + Pan
-let dragging=false,lastX,lastY;
-map.onmousedown=e=>{ if(e.button!==0)return; dragging=true; lastX=e.clientX; lastY=e.clientY; }
-map.onmouseup=e=>dragging=false;
-map.onmouseleave=e=>dragging=false;
-map.onmousemove=e=>{ if(dragging){ let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth); let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight); viewBox.x-=dx; viewBox.y-=dy; setViewBox(); lastX=e.clientX; lastY=e.clientY; } }
-
-// Scroll Zoom
-map.onwheel=e=>{ e.preventDefault(); const zoom=e.deltaY<0?0.95:1.05; viewBox.w*=zoom; viewBox.h*=zoom; setViewBox(); }
+// Mini-Map Viewport Rect
+const viewportRect=document.createElementNS("http://www.w3.org/2000/svg","rect");
+viewportRect.setAttribute("id","viewportRect");
+minimap.appendChild(viewportRect);
 
 // Gruppen
 const planetGroup=document.createElementNS("http://www.w3.org/2000/svg","g"); map.appendChild(planetGroup);
-const miniGroup=document.createElementNS("http://www.w3.org/2000/svg","g"); minimap.appendChild(miniGroup);
 const routeGroup=document.createElementNS("http://www.w3.org/2000/svg","g"); map.appendChild(routeGroup);
+const miniGroup=document.createElementNS("http://www.w3.org/2000/svg","g"); minimap.appendChild(miniGroup);
 
 // Farben
-function factionColor(aff){ const colors={"Galactic Republic":"#0f0","Republic":"#0f0","Empire":"#f00","Rebel Alliance":"#00f","Resistance":"#00f","First Order remnants":"#f0f","Jedi":"#ff0","Sith Eternal":"#f80","Chiss Ascendancy":"#0ff","Hutt Cartel":"#fa0","Nightsisters":"#a0a","Kaminoans":"#0af","Separatists":"#f80","Jedi legacy":"#ff0"}; return colors[aff]||"#fff"; }
+function factionColor(aff){ const colors={"Galactic Republic":"#0f0","Republic":"#0f0","Empire":"#f00","Rebel Alliance":"#00f","Resistance":"#0f0","First Order remnants":"#f0f","Jedi":"#ff0","Sith Eternal":"#f80","Chiss Ascendancy":"#0ff","Hutt Cartel":"#fa0","Nightsisters":"#a0a","Kaminoans":"#0af","Separatists":"#f80","Jedi legacy":"#ff0"}; return colors[aff]||"#fff"; }
+
+// JSON laden
+fetch("planets.json").then(r=>r.json()).then(data=>{ planetsData=data; drawPlanets(); drawRoutes(); drawMiniViewport(); });
 
 // Draw Planets
 function drawPlanets(){
@@ -86,13 +80,10 @@ function drawPlanets(){
  })
 }
 
-// Toggle
-function toggleFaction(){ factionMode=!factionMode; drawPlanets(); }
-function toggleRoutes(){ routesVisible=!routesVisible; drawRoutes(); }
-
-// Routes
+// Draw Routes
 function drawRoutes(){
- routeGroup.innerHTML=""; if(!routesVisible) return;
+ routeGroup.innerHTML="";
+ if(!routesVisible) return;
  routes.forEach(r=>{
   let p1=planetsData.find(pl=>pl.name===r[0]); let p2=planetsData.find(pl=>pl.name===r[1]); if(!p1||!p2) return;
   let line=document.createElementNS("http://www.w3.org/2000/svg","line");
@@ -102,10 +93,47 @@ function drawRoutes(){
   routeGroup.appendChild(line); animateLine(line);
  })
 }
+
+// Animate Hyperraumlinien
 function animateLine(line){ let offset=0; function anim(){ offset-=2; line.setAttribute("stroke-dashoffset",offset); requestAnimationFrame(anim); } anim(); }
+
+// Toggle
+function toggleFaction(){ factionMode=!factionMode; drawPlanets(); drawMiniViewport(); }
+function toggleRoutes(){ routesVisible=!routesVisible; drawRoutes(); }
+
+// Smooth Center
+function smoothCenter(x,y){ const steps=30; let dx=(x-viewBox.x-viewBox.w/2)/steps; let dy=(y-viewBox.y-viewBox.h/2)/steps; let i=0; const interval=setInterval(()=>{ viewBox.x+=dx; viewBox.y+=dy; updateMap(); i++; if(i>=steps) clearInterval(interval); },16); }
+
+// Update Map
+function updateMap(){ map.setAttribute("viewBox",`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`); drawMiniViewport(); }
+
+// Drag + Pan
+let dragging=false,lastX,lastY;
+map.onmousedown=e=>{ if(e.button!==0)return; dragging=true; lastX=e.clientX; lastY=e.clientY; }
+map.onmouseup=e=>dragging=false; map.onmouseleave=e=>dragging=false;
+map.onmousemove=e=>{ if(dragging){ let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth); let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight); viewBox.x-=dx; viewBox.y-=dy; updateMap(); lastX=e.clientX; lastY=e.clientY; } }
+
+// Scroll Zoom
+map.onwheel=e=>{ e.preventDefault(); const zoom=e.deltaY<0?0.95:1.05; viewBox.w*=zoom; viewBox.h*=zoom; updateMap(); }
 
 // Search
 search.oninput=e=>{ let value=search.value.toLowerCase(); planetsData.forEach((p,i)=>{ const display=p.name.toLowerCase().includes(value); planetGroup.children[i].style.display=display?"block":"none"; miniGroup.children[i].style.display=display?"block":"none"; }) }
+
+// Mini-Map Viewport Rect
+function drawMiniViewport(){
+ viewportRect.setAttribute("x",viewBox.x);
+ viewportRect.setAttribute("y",viewBox.y);
+ viewportRect.setAttribute("width",viewBox.w);
+ viewportRect.setAttribute("height",viewBox.h);
+}
+
+// Mini-Map Click
+minimap.onclick=e=>{
+ const pt=e.offsetX/2000*2000; // scaling is 1:1, viewBox shift
+ const mx=(e.offsetX/200)*2000; const my=(e.offsetY/200)*2000;
+ viewBox.x=mx-viewBox.w/2; viewBox.y=my-viewBox.h/2; updateMap();
+}
+
 </script>
 
 </body>
