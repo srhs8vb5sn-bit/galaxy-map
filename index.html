@@ -3,82 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <title>Galaxy Map</title>
-
 <style>
 body {
- margin:0;
- background:black;
- overflow:hidden;
- font-family:Arial;
- color:white;
+  margin:0;
+  background:black;
+  color:white;
+  font-family:Arial;
+  overflow:hidden;
 }
-
 #ui {
- position:absolute;
- top:10px;
- left:10px;
- z-index:10;
- background:rgba(0,0,0,0.7);
- padding:10px;
- border-radius:8px;
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:10;
 }
-
-button {
- margin-top:5px;
- width:160px;
+#search {
+  padding:8px;
+  font-size:16px;
+  width:250px;
 }
-
-#minimapContainer{
- position:absolute;
- right:20px;
- bottom:20px;
- width:250px;
- height:250px;
- border:2px solid white;
- background:black;
+#tooltip {
+  position:absolute;
+  background:#111;
+  border:1px solid #555;
+  padding:8px;
+  display:none;
+  pointer-events:none;
+  max-width:250px;
 }
-
-#minimap{
- width:100%;
- height:100%;
+#minimapContainer {
+  position:absolute;
+  bottom:10px;
+  right:10px;
+  width:200px;
+  height:200px;
+  border:1px solid #555;
+  background:#000;
+  z-index:10;
 }
-
-.tooltip{
- position:absolute;
- background:rgba(0,0,0,0.9);
- padding:10px;
- border-radius:6px;
- pointer-events:none;
- display:none;
- max-width:250px;
+#minimap {
+  width:100%;
+  height:100%;
 }
-
-.route {
- stroke:#00ffff;
- stroke-width:2;
- fill:none;
- stroke-dasharray:8 8;
- animation:pulse 2s linear infinite;
-}
-
-@keyframes pulse {
- to { stroke-dashoffset:-16; }
+circle:hover {
+  fill:white !important;
+  cursor:pointer;
 }
 </style>
 </head>
 <body>
 
 <div id="ui">
-<input id="search" placeholder="Planet suchen"><br>
-<button onclick="toggleFaction()">Fraktionsmodus</button><br>
-<button onclick="toggleRoutes()">Hyperraumrouten</button>
+  <input id="search" placeholder="Planet suchen"><br>
+  <button onclick="toggleFaction()">Fraktionsmodus</button>
+  <button onclick="toggleRoutes()">Hyperraumrouten</button>
 </div>
 
 <div id="minimapContainer">
-<svg id="minimap" viewBox="0 0 2000 2000"></svg>
+  <svg id="minimap" viewBox="0 0 2000 2000"></svg>
 </div>
 
-<div id="tooltip" class="tooltip"></div>
+<div id="tooltip"></div>
 
 <svg id="map" width="100vw" height="100vh" viewBox="0 0 2000 2000"></svg>
 
@@ -91,161 +76,211 @@ const search = document.getElementById("search")
 let factionMode = false
 let routesVisible = true
 let planetsData = []
-let viewBox = {x:0,y:0,w:2000,h:2000}
 let routes = [
- ["Coruscant","Corellia"],
- ["Corellia","Tatooine"],
- ["Coruscant","Naboo"],
- ["Naboo","Geonosis"],
- ["Hoth","Endor"],
- ["Endor","Coruscant"],
- ["Tatooine","Dagobah"],
- ["Dagobah","Ahch-To"]
+ ["Coruscant","Corellia"], ["Corellia","Tatooine"], ["Coruscant","Naboo"],
+ ["Naboo","Geonosis"], ["Hoth","Endor"], ["Endor","Coruscant"],
+ ["Tatooine","Dagobah"], ["Dagobah","Ahch-To"]
 ]
 
+let viewBox = {x:900,y:850,w:800,h:800}
+
 function setViewBox(){
- map.setAttribute("viewBox",
-  `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
+  map.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`)
 }
 
-function smoothCenter(x,y){
- const targetX = x - viewBox.w/2
- const targetY = y - viewBox.h/2
- let steps=30
- let dx=(targetX-viewBox.x)/steps
- let dy=(targetY-viewBox.y)/steps
- let i=0
- const interval=setInterval(()=>{
-  viewBox.x+=dx
-  viewBox.y+=dy
-  setViewBox()
-  i++
-  if(i>=steps) clearInterval(interval)
- },16)
+// Smooth Centering
+function smoothCenter(x, y){
+  const steps = 30
+  let dx = (x - viewBox.x - viewBox.w/2)/steps
+  let dy = (y - viewBox.y - viewBox.h/2)/steps
+  let i = 0
+  const interval = setInterval(()=>{
+    viewBox.x += dx
+    viewBox.y += dy
+    setViewBox()
+    i++
+    if(i>=steps) clearInterval(interval)
+  },16)
 }
 
-function factionColor(f){
- if(!f) return "white"
- if(f.includes("Republic")) return "cyan"
- if(f.includes("Empire")) return "red"
- if(f.includes("Rebel")) return "orange"
- if(f.includes("First")) return "yellow"
- if(f.includes("Sith")) return "purple"
- return "white"
-}
+// Load Planets
+planetsData = [
+  {"name":"Coruscant","x":1000,"y":1000,"region":"Core","era":"Republic / Empire","affiliation":"Galactic Republic","description":"Galaktisches Zentrum. Sitz des Senats."},
+  {"name":"Alderaan","x":1020,"y":980,"region":"Core","era":"Republic / Empire","affiliation":"Galactic Republic","description":"Friedliche Kernwelt. Vom Todesstern zerstört."},
+  {"name":"Corellia","x":1040,"y":1020,"region":"Core","era":"Republic / Empire","affiliation":"Republic","description":"Industrielle Kernwelt. Heimat von Han Solo."},
+  {"name":"Kuat","x":970,"y":1010,"region":"Core","era":"Republic / Empire","affiliation":"Empire","description":"Sternenzerstörer-Produktion."},
+  {"name":"Chandrila","x":980,"y":960,"region":"Core","era":"New Republic","affiliation":"New Republic","description":"Heimat von Mon Mothma."},
+  {"name":"Brentaal IV","x":1010,"y":970,"region":"Core","era":"Republic","affiliation":"Republic","description":"Handelszentrum im Kern."},
+  {"name":"Hosnian Prime","x":990,"y":990,"region":"Core","era":"New Republic","affiliation":"New Republic","description":"Zerstört durch Starkiller Base."},
+
+  {"name":"Naboo","x":1150,"y":1050,"region":"Mid Rim","era":"Republic","affiliation":"Republic","description":"Heimat von Padmé und Palpatine."},
+  {"name":"Kashyyyk","x":1200,"y":1100,"region":"Mid Rim","era":"Republic","affiliation":"Wookiees","description":"Dschungelplanet der Wookiees."},
+  {"name":"Bespin","x":1300,"y":950,"region":"Mid Rim","era":"Empire","affiliation":"Empire","description":"Cloud City. Vader vs Luke."},
+  {"name":"Dathomir","x":1400,"y":980,"region":"Mid Rim","era":"Republic / Empire","affiliation":"Nightsisters","description":"Dunkle Welt der Hexen."},
+  {"name":"Malastare","x":1100,"y":1150,"region":"Mid Rim","era":"Republic","affiliation":"Republic","description":"Rennwelt."},
+  {"name":"Ord Mantell","x":1250,"y":1080,"region":"Mid Rim","era":"Empire","affiliation":"Empire","description":"Schmugglerwelt."},
+  {"name":"Ryloth","x":1350,"y":1020,"region":"Mid Rim","era":"Republic","affiliation":"Republic","description":"Heimat der Twi'lek."},
+  {"name":"Felucia","x":1450,"y":1040,"region":"Mid Rim","era":"Republic","affiliation":"Separatists","description":"Pilzwelt."},
+
+  {"name":"Tatooine","x":1600,"y":1200,"region":"Outer Rim","era":"Republic / Empire","affiliation":"Hutt Cartel","description":"Heimat von Luke und Anakin."},
+  {"name":"Mustafar","x":1500,"y":1000,"region":"Outer Rim","era":"Empire","affiliation":"Separatists / Empire","description":"Vulkanwelt. Duell Anakin vs. Obi-Wan."},
+  {"name":"Kamino","x":1400,"y":900,"region":"Outer Rim","era":"Republic","affiliation":"Kaminoans","description":"Ort der Klon-Armee-Produktion."},
+  {"name":"Geonosis","x":1580,"y":1080,"region":"Outer Rim","era":"Republic","affiliation":"Separatists","description":"Beginn der Klonkriege."},
+  {"name":"Hoth","x":1500,"y":850,"region":"Outer Rim","era":"Empire","affiliation":"Rebel Alliance","description":"Eisplanet. Schlacht von Hoth."},
+  {"name":"Endor","x":1550,"y":900,"region":"Outer Rim","era":"Empire","affiliation":"Rebel Alliance","description":"Zweiter Todesstern zerstört."},
+  {"name":"Dagobah","x":1620,"y":970,"region":"Outer Rim","era":"Empire","affiliation":"Jedi","description":"Versteck von Meister Yoda."},
+  {"name":"Mon Cala","x":1380,"y":1120,"region":"Outer Rim","era":"Empire","affiliation":"Rebel Alliance","description":"Heimat der Mon Calamari."},
+  {"name":"Utapau","x":1520,"y":1060,"region":"Outer Rim","era":"Republic","affiliation":"Republic","description":"Order 66 auf Utapau."},
+  {"name":"Saleucami","x":1490,"y":1150,"region":"Outer Rim","era":"Republic","affiliation":"Republic","description":"Klonkriegswelt."},
+  {"name":"Mygeeto","x":1300,"y":880,"region":"Outer Rim","era":"Republic","affiliation":"Republic","description":"Order 66 Planet."},
+  {"name":"Crait","x":1720,"y":1150,"region":"Outer Rim","era":"New Republic","affiliation":"Resistance","description":"Salzplanet."},
+  {"name":"Jakku","x":1800,"y":1200,"region":"Outer Rim","era":"New Republic","affiliation":"First Order remnants","description":"Schlacht nach Episode VI."},
+  {"name":"Nevarro","x":1750,"y":1000,"region":"Outer Rim","era":"Empire","affiliation":"Bounty Hunters","description":"The Mandalorian."},
+  {"name":"Lothal","x":1650,"y":1050,"region":"Outer Rim","era":"Empire","affiliation":"Empire","description":"Star Wars Rebels."},
+
+  {"name":"Ilum","x":900,"y":300,"region":"Unknown","era":"Republic","affiliation":"Jedi Order","description":"Kyber-Kristall Welt."},
+  {"name":"Exegol","x":400,"y":400,"region":"Unknown","era":"Final Order","affiliation":"Sith Eternal","description":"Versteck von Darth Sidious."},
+  {"name":"Ahch-To","x":350,"y":450,"region":"Unknown","era":"New Republic","affiliation":"Jedi legacy","description":"Erster Jedi-Tempel."},
+  {"name":"Starkiller Base","x":300,"y":350,"region":"Unknown","era":"First Order","affiliation":"First Order","description":"Superwaffe."},
+  {"name":"Csilla","x":450,"y":250,"region":"Unknown","era":"Empire","affiliation":"Chiss Ascendancy","description":"Heimat von Thrawn."}
+]
+
+// Draw Planets & Mini-Map
+const planetGroup = document.createElementNS("http://www.w3.org/2000/svg","g")
+map.appendChild(planetGroup)
+const miniGroup = document.createElementNS("http://www.w3.org/2000/svg","g")
+minimap.appendChild(miniGroup)
 
 function draw(){
- map.innerHTML=""
- minimap.innerHTML=""
+  planetGroup.innerHTML=""
+  miniGroup.innerHTML=""
 
- // Hyperraumlinien
- if(routesVisible){
-  routes.forEach(r=>{
-   const a = planetsData.find(p=>p.name===r[0])
-   const b = planetsData.find(p=>p.name===r[1])
-   if(a&&b){
-    const line=document.createElementNS("http://www.w3.org/2000/svg","line")
-    line.setAttribute("x1",a.x)
-    line.setAttribute("y1",a.y)
-    line.setAttribute("x2",b.x)
-    line.setAttribute("y2",b.y)
-    line.setAttribute("class","route")
-    map.appendChild(line)
-   }
+  planetsData.forEach(p=>{
+    let c = document.createElementNS("http://www.w3.org/2000/svg","circle")
+    c.setAttribute("cx",p.x)
+    c.setAttribute("cy",p.y)
+    c.setAttribute("r",6)
+    c.setAttribute("fill","#0ff")
+    if(factionMode) c.setAttribute("fill", factionColor(p.affiliation))
+    planetGroup.appendChild(c)
+
+    // Tooltip
+    c.onmouseenter=e=>{
+      tooltip.style.display="block"
+      tooltip.innerHTML=`<b>${p.name}</b><br>${p.affiliation}<br>${p.description}`
+    }
+    c.onmousemove=e=>{
+      tooltip.style.left=e.clientX+10+"px"
+      tooltip.style.top=e.clientY+10+"px"
+    }
+    c.onmouseleave=e=>{tooltip.style.display="none"}
+    c.onclick=e=>{smoothCenter(p.x,p.y)}
+
+    // Mini-map
+    let mc = document.createElementNS("http://www.w3.org/2000/svg","circle")
+    mc.setAttribute("cx",p.x)
+    mc.setAttribute("cy",p.y)
+    mc.setAttribute("r",3)
+    mc.setAttribute("fill","#0ff")
+    if(factionMode) mc.setAttribute("fill", factionColor(p.affiliation))
+    mc.onclick=e=>{smoothCenter(p.x,p.y)}
+    miniGroup.appendChild(mc)
   })
- }
+}
+draw()
 
- // Planeten zeichnen
- planetsData.forEach(p=>{
-  const circle=document.createElementNS("http://www.w3.org/2000/svg","circle")
-  circle.setAttribute("cx",p.x)
-  circle.setAttribute("cy",p.y)
-  circle.setAttribute("r",6)
-  circle.setAttribute("fill",factionMode ? factionColor(p.affiliation) : "white")
-  circle.dataset.name=p.name.toLowerCase()
-
-  circle.onmouseenter=e=>{
-   tooltip.style.display="block"
-   tooltip.innerHTML=`<b>${p.name}</b><br>${p.region}<br>${p.affiliation}<br>${p.description}`
+// Faction colors
+function factionColor(aff){
+  const colors={
+    "Galactic Republic":"#00ff00",
+    "Republic":"#00ff00",
+    "Empire":"#ff0000",
+    "Rebel Alliance":"#0000ff",
+    "Resistance":"#0000ff",
+    "First Order remnants":"#ff00ff",
+    "Jedi":"#ffff00",
+    "Sith Eternal":"#ff8800",
+    "Chiss Ascendancy":"#00ffff",
+    "Hutt Cartel":"#ffaa00",
+    "Nightsisters":"#aa00aa",
+    "Kaminoans":"#00aaff",
+    "Separatists":"#ff8800",
+    "Jedi legacy":"#ffff00"
   }
-  circle.onmousemove=e=>{
-   tooltip.style.left=e.pageX+10+"px"
-   tooltip.style.top=e.pageY+10+"px"
+  return colors[aff] || "#ffffff"
+}
+
+function toggleFaction(){ factionMode=!factionMode; draw() }
+function toggleRoutes(){ routesVisible=!routesVisible; drawRoutes() }
+
+// Hyperraumrouten
+const routeGroup = document.createElementNS("http://www.w3.org/2000/svg","g")
+map.appendChild(routeGroup)
+
+function drawRoutes(){
+  routeGroup.innerHTML=""
+  if(!routesVisible) return
+  routes.forEach(r=>{
+    let p1=planetsData.find(pl=>pl.name===r[0])
+    let p2=planetsData.find(pl=>pl.name===r[1])
+    if(!p1||!p2) return
+    let line=document.createElementNS("http://www.w3.org/2000/svg","line")
+    line.setAttribute("x1",p1.x)
+    line.setAttribute("y1",p1.y)
+    line.setAttribute("x2",p2.x)
+    line.setAttribute("y2",p2.y)
+    line.setAttribute("stroke","#ff0")
+    line.setAttribute("stroke-width","2")
+    line.setAttribute("stroke-dasharray","10")
+    routeGroup.appendChild(line)
+    animateLine(line)
+  })
+}
+
+function animateLine(line){
+  let offset=0
+  function anim(){
+    offset-=2
+    line.setAttribute("stroke-dashoffset",offset)
+    requestAnimationFrame(anim)
   }
-  circle.onmouseleave=()=>tooltip.style.display="none"
-  circle.onclick=()=>smoothCenter(p.x,p.y)
+  anim()
+}
+drawRoutes()
 
-  map.appendChild(circle)
-
-  // Mini-Map
-  const mini=document.createElementNS("http://www.w3.org/2000/svg","circle")
-  mini.setAttribute("cx",p.x)
-  mini.setAttribute("cy",p.y)
-  mini.setAttribute("r",3)
-  mini.setAttribute("fill","white")
-  minimap.appendChild(mini)
- })
-
- // Mini-Map Viewport Rechteck
- const rect=document.createElementNS("http://www.w3.org/2000/svg","rect")
- rect.setAttribute("x",viewBox.x)
- rect.setAttribute("y",viewBox.y)
- rect.setAttribute("width",viewBox.w)
- rect.setAttribute("height",viewBox.h)
- rect.setAttribute("fill","none")
- rect.setAttribute("stroke","red")
- minimap.appendChild(rect)
+// Drag & Zoom
+let dragging=false, lastX, lastY
+map.onmousedown=e=>{dragging=true; lastX=e.clientX; lastY=e.clientY}
+map.onmouseup=e=>dragging=false
+map.onmouseleave=e=>dragging=false
+map.onmousemove=e=>{
+  if(dragging){
+    let dx=(e.clientX-lastX)*(viewBox.w/map.clientWidth)
+    let dy=(e.clientY-lastY)*(viewBox.h/map.clientHeight)
+    viewBox.x-=dx
+    viewBox.y-=dy
+    setViewBox()
+    lastX=e.clientX
+    lastY=e.clientY
+  }
+}
+map.onwheel=e=>{
+  e.preventDefault()
+  const zoom= e.deltaY<0?0.95:1.05
+  viewBox.w*=zoom
+  viewBox.h*=zoom
+  setViewBox()
 }
 
 // Search
-search.oninput=()=>{
- const val=search.value.toLowerCase()
- const found=planetsData.find(p=>p.name.toLowerCase()===val)
- if(found) smoothCenter(found.x,found.y)
+search.oninput=e=>{
+  let value=search.value.toLowerCase()
+  planetsData.forEach((p,i)=>{
+    const display=p.name.toLowerCase().includes(value)
+    planetGroup.children[i].style.display=display?"block":"none"
+    miniGroup.children[i].style.display=display?"block":"none"
+  })
 }
-
-// Toggle Fraktionen
-function toggleFaction(){
- factionMode=!factionMode
- draw()
-}
-
-// Toggle Routen
-function toggleRoutes(){
- routesVisible=!routesVisible
- draw()
-}
-
-// Mini-Map Klick
-minimap.onclick=e=>{
- const rect=minimap.getBoundingClientRect()
- const scaleX=2000/rect.width
- const scaleY=2000/rect.height
- const x=(e.clientX-rect.left)*scaleX
- const y=(e.clientY-rect.top)*scaleY
- smoothCenter(x,y)
-}
-
-// Map Zoom
-map.addEventListener("wheel",e=>{
- e.preventDefault()
- const zoom=e.deltaY>0?1.1:0.9
- viewBox.w*=zoom
- viewBox.h*=zoom
- setViewBox()
- draw()
-})
-
-// ✅ Planeten laden
-fetch("planets.json")
-.then(r=>r.json())
-.then(data=>{
- planetsData = data
- viewBox = {x:900, y:850, w:800, h:800} // Startbereich
- draw()
-})
-
-setViewBox()
 </script>
 
 </body>
