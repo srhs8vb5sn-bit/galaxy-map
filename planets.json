@@ -1,30 +1,111 @@
-{
-  "core": [
-    "Coruscant","Alderaan","Corellia","Kuat","Chandrila","Anaxes","Rendili","Duro","Brentaal IV","Hosnian Prime",
-    "Alsakan","Caamas","Cerea","Humbarine","Metellos","Abregado-rae","Bormea","Commenor","Esseles","Denon",
-    "Taris","Eriadu","Muunilinst","Corulag","Byblos","Grizmallt","Columus","Tynna","Glee Ansel","Kalevala",
-    "Ralltiir","Tepasi","Naboo (Core variant Legends)","Sarka","Daalang","Dantooine (Old Core Route)","Trofhar","Vulpter","Thisspias","Phindar"
-  ],
-  "innerRim": [
-    "Balmorra","Kashyyyk","Bothawui","Fondor","Sullust","Rodia","Mon Cala","Ord Radama","Telos","Dathomir",
-    "Onderon","Dxun","Serenno","Rhen Var","Malastare","Ithor","Raxus","Raxus Prime","Saleucami","Utapau",
-    "Kinyen","Mykapo","Teth","Batuu","Bracca","Cato Neimoidia","Neimoidia","Jabiim","Jelucan","Harloff Minor",
-    "Iridonia","Dorin","Zeltros","Tund","Tholoth","Gand","Cerea Minor","Mrlsst","Kinyen Prime","Sernpidal"
-  ],
-  "midRim": [
-    "Naboo","Bespin","Ryloth","Ord Mantell","Felucia","Mygeeto","Geonosis","Kamino","Mustafar","Scarif",
-    "Toydaria","Umbara","Florrum","Mandalore","Concord Dawn","Concordia","Nevarro","Lothal","Atollon","Kaller",
-    "Rakata Prime","Ilum","Jedha","Savareen","Vardos","Pasaana","Cantonica","Dac","Thyferra","Quarzite",
-    "Aargonar","Bimmiel","Roon","Shili","Kothlis","Gorse","Vulpter Minor","Rattatak","Saleucami Minor","Roche"
-  ],
-  "outerRim": [
-    "Tatooine","Hoth","Endor","Dagobah","Nal Hutta","Rodia Outer","Geonosis Outer","Lok","Taris (Outer route)",
-    "Yavin 4","Yavin Prime","Kessel","Takodana","Rishi","Dorin Outer","Anoat","Anoat Minor","Elrood","Garel","Ploo",
-    "Kinyen Outer","Wayland","Korriban","Malachor","Dromund Kaas","Ziost","Lehon","Zonama Sekot","Tython","Ossus",
-    "Christophsis","Umbara Outer","Mon Gazza","Rhen Var Outer","Batuu Outer","Polis Massa","Rodia Minor","Kashyyyk Outer","Gorse Sector","Saleucami Outer"
-  ],
-  "unknown": [
-    "Exegol","Ahch-To","Csilla","Mortis","Byss","Zakuul","Iokath","Rakatan Prime","Nathema","Odessen",
-    "Thule","Mustafar Unknown","Kesh","Prakith","Dromund Fels","Ilum Unknown","Rishi Maze","Dagobah Deep","Tholoth Prime","Korriban Deep"
-  ]
-}
+[
+  {
+    "name": "Coruscant",
+    "x": 1000,
+    "y": 1000,
+    "region": "Core",
+    "era": "Republic / Empire",
+    "faction": "Galactic Republic",
+    "description": "Hauptwelt des Galaktischen Senats.",
+    "image": "https://starwars.fandom.com/wiki/File:Coruscant_TPM.png",
+    "jedipedia": "https://www.jedipedia.net/wiki/Coruscant",
+    "source": "Canon"
+  },
+  {
+    "name": "Tatooine",
+    "x": 1600,
+    "y": 1200,
+    "region": "Outer Rim",
+    "era": "Republic / Empire",
+    "faction": "Hutt Cartel",
+    "description": "Wüstenplanet. Heimat von Luke und Anakin.",
+    "image": "https://starwars.fandom.com/wiki/File:Tatooine_TPM.png",
+    "jedipedia": "https://www.jedipedia.net/wiki/Tatooine",
+    "source": "Canon"
+  },
+  {
+    "name": "Alderaan",
+    "x": 1020,
+    "y": 980,
+    "region": "Core",
+    "era": "Republic",
+    "faction": "Galactic Republic",
+    "description": "Friedliche Kernwelt. Vom Todesstern zerstört.",
+    "image": "https://starwars.fandom.com/wiki/File:Alderaan.png",
+    "jedipedia": "https://www.jedipedia.net/wiki/Alderaan",
+    "source": "Canon"
+  },
+  {
+    "name": "Naboo",
+    "x": 1150,
+    "y": 1050,
+    "region": "Mid Rim",
+    "era": "Republic",
+    "faction": "Republic",
+    "description": "Heimat von Padmé Amidala.",
+    "image": "https://starwars.fandom.com/wiki/File:Naboo_planet.png",
+    "jedipedia": "https://www.jedipedia.net/wiki/Naboo",
+    "source": "Canon"
+  },
+  {
+    "name": "Dathomir",
+    "x": 1400,
+    "y": 980,
+    "region": "Outer Rim",
+    "era": "Clone Wars",
+    "faction": "Nightsisters",
+    "description": "Heimat der Nacht­schwestern.",
+    "image": "https://starwars.fandom.com/wiki/File:Dathomir.jpg",
+    "jedipedia": "https://www.jedipedia.net/wiki/Dathomir",
+    "source": "Canon"
+  },
+  {
+    "name": "Rutian Verge",
+    "x": 400,
+    "y": 300,
+    "region": "Unknown",
+    "era": "Legends",
+    "faction": "Independent",
+    "description": "Legends‑Sektor, selten besucht.",
+    "image": "https://starwars.fandom.com/wiki/File:Rutian_Verge.png",
+    "jedipedia": "https://www.jedipedia.net/wiki/Rutian_Verge",
+    "source": "Legends"
+  },
+  {
+    "name": "Byss",
+    "x": 600,
+    "y": 400,
+    "region": "Unknown",
+    "era": "Legends",
+    "faction": "Empire",
+    "description": "Imperiale Welt unter Darth Vader.",
+    "image": "https://starwars.fandom.com/wiki/File:Byss.jpg",
+    "jedipedia": "https://www.jedipedia.net/wiki/Byss",
+    "source": "Legends"
+  },
+  {
+    "name": "Rodia",
+    "x": 1700,
+    "y": 950,
+    "region": "Outer Rim",
+    "era": "Republic",
+    "faction": "Rodian Clans",
+    "description": "Heimatwelt der Rodianer.",
+    "image": "https://starwars.fandom.com/wiki/File:Rodia.png",
+    "jedipedia": "https://www.jedipedia.net/wiki/Rodia",
+    "source": "Canon"
+  },
+  {
+    "name": "Ziost",
+    "x": 800,
+    "y": 300,
+    "region": "Unknown",
+    "era": "Legends",
+    "faction": "Empire",
+    "description": "Verlassene Sith‑Heimatwelt.",
+    "image": "https://starwars.fandom.com/wiki/File:Ziost.jpg",
+    "jedipedia": "https://www.jedipedia.net/wiki/Ziost",
+    "source": "Legends"
+  }
+  /* → Füge hier weitere Einträge im selben Format ein, bis ~500 */
+]
